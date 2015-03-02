@@ -181,7 +181,10 @@ for title, date, username, text, comment in c.execute('SELECT * FROM revisions O
     if title.startswith("MediaWiki:") or title.startswith("Help:"):
         # Not interesting, ignore
         continue
-    if title.startswith("User:") or title.startswith("Talk:"):
+    if title.startswith("File:"):
+        # TODO - capture the actuall file rather than the wiki page about the file
+        continue
+    if title.startswith("User:") or title.startswith("Talk:") or title.startswith("User_talk:"):
         # Not wanted, ignore
         continue
     filename = make_filename(title)
