@@ -5,7 +5,7 @@ import subprocess
 import sqlite3
 from xml.etree import cElementTree as ElementTree
 
-dump = sys.argv[1]  # TODO - proper API
+mediawiki_xml_dump = sys.argv[1]  # TODO - proper API
 prefix = "wiki/"
 ext = "md"
 user_table = "usernames.txt"
@@ -30,9 +30,9 @@ with open(user_blacklist, "r") as handle:
     for line in handle:
         blacklist.add(line.strip())
 
-e = ElementTree.iterparse(open(dump), events=('start', 'end'))
+e = ElementTree.iterparse(open(mediawiki_xml_dump), events=('start', 'end'))
 
-db = dump + ".sqlite"
+db = mediawiki_xml_dump + ".sqlite"
 if os.path.isfile(db):
     os.remove(db)
 conn = sqlite3.connect(db)
