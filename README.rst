@@ -26,7 +26,9 @@ for their GitHub accounts (column two), e.g.::
 Spam revisions (and revsions) are also not wanted, and
 can be ignored via a blacklist file of usernames (one
 per line). This means not every wiki revision will become
-a git commit.
+a git commit. See helper script ``extract_blocklist.py``
+for pulling the names of blocked users from an HTML
+download of the wiki's ``Special:BlockList`` page.
 
 Also, some revisions making minor changes to the wiki
 formatting may result in no changes to the converted
