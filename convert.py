@@ -80,14 +80,17 @@ def dump_revision(filename, text, title):
     if stderr:
         print stderr
     if child.returncode:
-        sys_exit("Error %i from pandoc" % child.returncode)
+        sys.stderr.write("Error %i from pandoc\n" % child.returncode)
     if not stdout:
-        sys_exit("No output from pandoc for %r" % filename)
+        sys.stderr.write("No output from pandoc for %r\n" % filename)
+    if child.returncode or not stdout:
+        return False
     with open(filename, "w") as handle:
         handle.write("---\n")
         handle.write("title: %s\n" % title)
         handle.write("---\n\n")
         handle.write(stdout)
+    return True
 
 def run(cmd_string):
     print(cmd_string)
@@ -183,8 +186,10 @@ for title, date, username, text, comment in c.execute('SELECT * FROM revisions O
         continue
     filename = make_filename(title)
     print("Converting %s as of revision %s by %s" % (filename, date, username))
-    dump_revision(filename, text, title)
-    commit_revision(filename, username, date, comment)
+    if dump_revision(filename, text, title):
+        commit_revision(filename, username, date, comment)
+    else:
+        sys.stderr.write("Skipping this revision!\n")
 
 print("=" * 60)
 if missing_users:
