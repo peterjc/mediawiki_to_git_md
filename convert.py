@@ -5,7 +5,7 @@ import subprocess
 import sqlite3
 from xml.etree import cElementTree as ElementTree
 
-dump = "../biopython_wiki_dump/biopython_mediawiki_dump.xml"
+dump = sys.argv[1]  # TODO - proper API
 prefix = "wiki/"
 ext = "md"
 user_table = "usernames.txt"
