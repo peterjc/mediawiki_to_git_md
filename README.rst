@@ -23,9 +23,9 @@ for their GitHub accounts (column two), e.g.::
 
     AnOther (tab) A. N. Other <a.n.other@example.com>
 
-Spam revisions (and revsions) are also not wanted, and
-can be ignored via a blacklist file of usernames (one
-per line). This means not every wiki revision will become
+Spam revisions (and non-rollback reverts) are also not
+wanted, and can be ignored via a blacklist file of usernames
+(one per line). This means not every wiki revision will become
 a git commit. See helper script ``extract_blocklist.py``
 for pulling the names of blocked users from an HTML
 download of the wiki's ``Special:BlockList`` page.
