@@ -10,7 +10,7 @@ pages), and turn each revision into a separate git commit
 of the page converted into markdown using pandoc.
 
 This uses a crude Python script (calling pandoc and git).
-It assume it is running in the base folder of a git
+It assumes it is running in the base folder of a git
 repository on a suitable branch to which it will commit
 back-dated changes as markdown files.
 
