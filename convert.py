@@ -78,6 +78,8 @@ def dump_revision(filename, text):
     stdout, stderr = child.communicate()
     if stderr:
         print stderr
+    if child.returncode:
+        sys_exit("Error %i from pandoc" % child.returncode)
 
 def run(cmd_string):
     print(cmd_string)
