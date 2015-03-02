@@ -62,7 +62,7 @@ def mkdir_recursive(path):
             os.mkdir(p)
     assert os.path.exists(path)
 
-def dump_revision(filename, text):
+def dump_revision(filename, text, title):
     # We may have unicode, e.g. character u'\xed' (accented i)
     folder, local_filename = os.path.split(filename)
     # e.g. 'wiki/BioSQL/Windows.md
@@ -70,9 +70,10 @@ def dump_revision(filename, text):
 
     child = subprocess.Popen([pandoc,
                               "-f", "mediawiki",
-                              "-t", "markdown",
-                              "-o", filename],
+                              "-t", "markdown"],
                              stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
                              )
     child.stdin.write(text.encode("utf8"))
     stdout, stderr = child.communicate()
@@ -80,6 +81,13 @@ def dump_revision(filename, text):
         print stderr
     if child.returncode:
         sys_exit("Error %i from pandoc" % child.returncode)
+    if not stdout:
+        sys_exit("No output from pandoc for %r" % filename)
+    with open(filename, "w") as handle:
+        handle.write("---\n")
+        handle.write("title: %s\n" % title)
+        handle.write("---\n\n")
+        handle.write(stdout)
 
 def run(cmd_string):
     print(cmd_string)
@@ -175,7 +183,7 @@ for title, date, username, text, comment in c.execute('SELECT * FROM revisions O
         continue
     filename = make_filename(title)
     print("Converting %s as of revision %s by %s" % (filename, date, username))
-    dump_revision(filename, text)
+    dump_revision(filename, text, title)
     commit_revision(filename, username, date, comment)
 
 print("=" * 60)
