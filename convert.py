@@ -46,6 +46,41 @@ def sys_exit(msg, error_level=1):
     sys.stderr.write(msg.rstrip() + "\n")
     sys.exit(error_level)
 
+def cleanup_mediawiki(text):
+    """Modify mediawiki markup to make it pandoc ready.
+
+    Long term this needs to be highly configurable on a site-by-site
+    basis, but for now I'll put local hacks here.
+    """
+    # This tag was probably setup via SyntaxHighlight GeSHi for biopython.org's wiki
+    #
+    # <python>
+    # print("Hello world")
+    # </python>
+    #
+    # Replacing it with the following makes pandoc happy,
+    #
+    # <source lang=Python>
+    # import antigravity
+    # </source>
+    #
+    # Conversion to GitHub Flavour Markdown gives:
+    #
+    # ``` Python
+    # import antigravity
+    # ```
+    #
+    # Which is much nicer.
+    new = []
+    for line in text.split("\n"):
+        if line.rstrip() == "<python>":
+            line = "<source lang=Python>"
+        elif line.rstrip() == "</python>":
+            line = "</source>"
+        new.append(line)
+    return "\n".join(new)
+
+
 def clean_tag(tag):
     while "}" in tag:
         tag = tag[tag.index("}") + 1:]
@@ -71,7 +106,7 @@ def dump_revision(mw_filename, md_filename, text, title):
     folder, local_filename = os.path.split(mw_filename)
     mkdir_recursive(folder)
     with open(mw_filename, "w") as handle:
-        handle.write(text.encode("utf8"))
+        handle.write(cleanup_mediawiki(text).encode("utf8"))
 
     folder, local_filename = os.path.split(md_filename)
     mkdir_recursive(folder)
