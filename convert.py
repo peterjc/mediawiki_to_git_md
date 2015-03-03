@@ -7,10 +7,12 @@ from xml.etree import cElementTree as ElementTree
 
 mediawiki_xml_dump = sys.argv[1]  # TODO - proper API
 prefix = "wiki/"
-ext = "md"
+mediawiki_ext = "mediawiki"
+markdown_ext = "md"
 user_table = "usernames.txt"
 user_blacklist = "user_blacklist.txt"
 default_email = "anonymous.contributor@example.org"
+
 
 git = "git" # assume on path
 pandoc = "pandoc" # assume on path
@@ -49,7 +51,7 @@ def clean_tag(tag):
         tag = tag[tag.index("}") + 1:]
     return tag
 
-def make_filename(title):
+def make_filename(title, ext):
     filename = title.replace(" ", "_")
     return os.path.join(prefix, filename + os.path.extsep + ext)
 
@@ -62,30 +64,34 @@ def mkdir_recursive(path):
             os.mkdir(p)
     assert os.path.exists(path)
 
-def dump_revision(filename, text, title):
+def dump_revision(mw_filename, md_filename, text, title):
     # We may have unicode, e.g. character u'\xed' (accented i)
-    folder, local_filename = os.path.split(filename)
-    # e.g. 'wiki/BioSQL/Windows.md
-    mkdir_recursive(folder)
+    # Make folder in case have example like 'wiki/BioSQL/Windows.md
 
+    folder, local_filename = os.path.split(mw_filename)
+    mkdir_recursive(folder)
+    with open(mw_filename, "w") as handle:
+        handle.write(text.encode("utf8"))
+
+    folder, local_filename = os.path.split(md_filename)
+    mkdir_recursive(folder)
     child = subprocess.Popen([pandoc,
                               "-f", "mediawiki",
-                              "-t", "markdown_github"],
-                             stdin=subprocess.PIPE,
+                              "-t", "markdown_github",
+                              mw_filename],
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
                              )
-    child.stdin.write(text.encode("utf8"))
     stdout, stderr = child.communicate()
     if stderr:
         print stderr
     if child.returncode:
         sys.stderr.write("Error %i from pandoc\n" % child.returncode)
     if not stdout:
-        sys.stderr.write("No output from pandoc for %r\n" % filename)
+        sys.stderr.write("No output from pandoc for %r\n" % mw_filename)
     if child.returncode or not stdout:
         return False
-    with open(filename, "w") as handle:
+    with open(md_filename, "w") as handle:
         handle.write("---\n")
         handle.write("title: %s\n" % title)
         handle.write("---\n\n")
@@ -98,9 +104,10 @@ def run(cmd_string):
     if return_code:
         sys_exit("Error %i from: %s" % (return_code, cmd_string), return_code)
 
-def commit_revision(filename, username, date, comment):
-    assert os.path.isfile(filename), filename
-    cmd = '"%s" add "%s"' % (git, filename)
+def commit_revision(mw_filename, md_filename, username, date, comment):
+    assert os.path.isfile(md_filename), md_filename
+    assert os.path.isfile(mw_filename), mw_filename
+    cmd = '"%s" add "%s" "%s"' % (git, md_filename, mw_filename)
     run(cmd)
     if not comment:
         comment = "Change to wiki page"
@@ -118,7 +125,7 @@ def commit_revision(filename, username, date, comment):
     # using the -F option and piping to stdin.
     # cmd = '"%s" commit "%s" --date "%s" --author "%s" -m "%s" --allow-empty' \
     #       % (git, filename, date, author, comment)
-    child = subprocess.Popen([git, 'commit', filename,
+    child = subprocess.Popen([git, 'commit', mw_filename, md_filename,
                               '--date', date,
                               '--author', author,
                               '-F', '-',
@@ -187,11 +194,15 @@ for title, date, username, text, comment in c.execute('SELECT * FROM revisions O
     if title.startswith("User:") or title.startswith("Talk:") or title.startswith("User_talk:"):
         # Not wanted, ignore
         continue
-    filename = make_filename(title)
-    print("Converting %s as of revision %s by %s" % (filename, date, username))
-    if dump_revision(filename, text, title):
-        commit_revision(filename, username, date, comment)
+    md_filename = make_filename(title, markdown_ext)
+    mw_filename = make_filename(title, mediawiki_ext)
+    print("Converting %s as of revision %s by %s" % (md_filename, date, username))
+    if dump_revision(mw_filename, md_filename, text, title):
+        commit_revision(mw_filename, md_filename, username, date, comment)
     else:
+        # Only the mediawiki changed, could not convert to markdown.
+        cmd = "git reset --hard"
+        run(cmd)
         sys.stderr.write("Skipping this revision!\n")
 
 print("=" * 60)
