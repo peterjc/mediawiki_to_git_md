@@ -70,7 +70,7 @@ def dump_revision(filename, text, title):
 
     child = subprocess.Popen([pandoc,
                               "-f", "mediawiki",
-                              "-t", "markdown"],
+                              "-t", "markdown_github"],
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
