@@ -75,7 +75,9 @@ def cleanup_mediawiki(text):
     for line in text.split("\n"):
         if line.rstrip() == "<python>":
             line = "<source lang=Python>"
-        elif line.rstrip() == "</python>":
+        elif line.rstrip() == "<perl>":
+            line = "<source lang=Perl>"
+        elif line.rstrip() in ["</python>", "</perl>"]:
             line = "</source>"
         new.append(line)
     return "\n".join(new)
