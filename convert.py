@@ -132,7 +132,7 @@ def dump_revision(mw_filename, md_filename, text, title):
     mkdir_recursive(folder)
     child = subprocess.Popen([pandoc,
                               "-f", "mediawiki",
-                              "-t", "markdown_github",
+                              "-t", "markdown_github-hard_line_breaks",
                               mw_filename],
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
