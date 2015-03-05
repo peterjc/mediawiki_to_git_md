@@ -88,9 +88,13 @@ def clean_tag(tag):
         tag = tag[tag.index("}") + 1:]
     return tag
 
+def make_url(title):
+    """Spaces to underscore; adds prefix."""
+    return os.path.join(prefix, title.replace(" ", "_"))
+
 def make_filename(title, ext):
-    filename = title.replace(" ", "_")
-    return os.path.join(prefix, filename + os.path.extsep + ext)
+    """Spaces to underscore; addsplus prefix and extension given."""
+    return make_url(title) + os.path.extsep + ext
 
 def mkdir_recursive(path):
     paths = [x for x in os.path.split(path) if x]
@@ -109,6 +113,20 @@ def dump_revision(mw_filename, md_filename, text, title):
     mkdir_recursive(folder)
     with open(mw_filename, "w") as handle:
         handle.write(cleanup_mediawiki(text).encode("utf8"))
+
+    if text.strip().startswith("#REDIRECT [[") and text.strip().endswith("]]"):
+        redirect = text.strip()[12:-2]
+        if "\n" not in redirect and "]" not in redirect:
+            # Maybe I should just have written a regular expression?
+            with open(md_filename, "w") as handle:
+                handle.write("---\n")
+                handle.write("title: %s\n" % title)
+                handle.write("redirect_to: /%s\n" % make_url(redirect))
+                handle.write("---\n\n")
+                handle.write("You should automatically be redirected to [%s](%s)\n"
+                             % (make_url(redirect), redirect))
+            print("Setup redirection %s --> %s" % (title, redirect))
+            return True
 
     folder, local_filename = os.path.split(md_filename)
     mkdir_recursive(folder)
