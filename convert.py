@@ -3,6 +3,7 @@ import os
 import sys
 import subprocess
 import sqlite3
+import urllib.request
 from xml.etree import cElementTree as ElementTree
 
 mediawiki_xml_dump = sys.argv[1]  # TODO - proper API
@@ -12,6 +13,8 @@ markdown_ext = "md"
 user_table = "usernames.txt"
 user_blacklist = "user_blacklist.txt"
 default_email = "anonymous.contributor@example.org"
+base_url = "http://biopython.org/wiki/" # Used for images
+base_image_url = "http://biopython.org//w/images/" # Used for images
 
 
 git = "git" # assume on path
@@ -236,6 +239,27 @@ for event, element in e:
     else:
         sys_exit("Unexpected event %r with element %r" % (event, element))
 
+def get_image(title, date):
+    #
+    time = date.split('T')[1][:5] # using the time to help find the image version
+    # need to file for example <a href="/w/images/6/64/TorusDBN.png">23:26, 23 August 2011</a>
+    ilink = re.compile("""(<a href="/w/images/)([a-zA-Z0-9./]+)([">]+)""" + "(" + time + ")")
+    image_name = title.split(':')[1]
+    image_page = base_url + title
+    print(image_page)
+    html = urllib.request.urlopen(image_page).read()
+    image_url = ilink.findall(str(html))
+    assert(len(ilink.findall(str(html))) == 1)
+    img = urllib.request.urlopen(base_image_url + img_url[0])
+    # TODO - where to save the image?
+    localFile = open(image_name, 'wb')
+    localFile.write(img.read())
+    localFile.close()
+
+def commit_image(title, username, date, comment):
+    # commit image
+    get_image(title, date)
+
 print("=" * 60)
 print("Sorting changes by revision date...")
 for title, date, username, text, comment in c.execute('SELECT * FROM revisions ORDER BY date, title'):
@@ -245,6 +269,8 @@ for title, date, username, text, comment in c.execute('SELECT * FROM revisions O
         continue
     if title.startswith("File:"):
         # TODO - capture the actuall file rather than the wiki page about the file
+        # Example Title File:Wininst.png
+        commit_image(title, username, date, comment)
         continue
     if title.startswith("User:") or title.startswith("Talk:") or title.startswith("User_talk:"):
         # Not wanted, ignore
