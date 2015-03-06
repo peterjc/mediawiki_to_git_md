@@ -143,7 +143,7 @@ def dump_revision(mw_filename, md_filename, text, title):
                              )
     stdout, stderr = child.communicate()
     if stderr:
-        print stderr
+        print(stderr)
     if child.returncode:
         sys.stderr.write("Error %i from pandoc\n" % child.returncode)
     if not stdout:
@@ -194,7 +194,7 @@ def commit_revision(mw_filename, md_filename, username, date, comment):
     child.stdin.write(comment.encode("utf8"))
     stdout, stderr = child.communicate()
     if stderr:
-        print stderr
+        print(stderr)
 
 
 print("=" * 60)
@@ -251,9 +251,9 @@ def get_image(title, date):
     html = urllib.request.urlopen(image_page).read()
     image_url = ilink.findall(str(html))
     assert(len(ilink.findall(str(html))) == 1)
-    img = urllib.request.urlopen(base_image_url + img_url[0][1])
-    # TODO - where to save the image?
-    localFile = open(image_name.lower(), 'wb') #need lowercase name
+    img = urllib.request.urlopen(base_image_url + image_url[0][1])
+    # TODO - where to save the images?
+    localFile = open('/wiki/' + image_name.lower(), 'wb') #need lowercase name
     localFile.write(img.read())
     localFile.close()
 
