@@ -251,7 +251,7 @@ def get_image(title, date):
     html = urllib.request.urlopen(image_page).read()
     image_url = ilink.findall(str(html))
     assert(len(ilink.findall(str(html))) == 1)
-    img = urllib.request.urlopen(base_image_url + img_url[0])
+    img = urllib.request.urlopen(base_image_url + img_url[0][1])
     # TODO - where to save the image?
     localFile = open(image_name, 'wb')
     localFile.write(img.read())
