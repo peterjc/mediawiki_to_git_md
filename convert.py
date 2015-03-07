@@ -12,15 +12,23 @@ except ImportError:
     from urllib2 import urlopen
 from xml.etree import cElementTree as ElementTree
 
+if len(sys.argv) == 1:
+    print("Basic Usage: ./convert.py mediawiki.dump")
+    print("")
+    print('White list: ./convert.py mediawiki.dump "Main Page" "File:Example Image.jpg"')
+    sys.exit()
+
 mediawiki_xml_dump = sys.argv[1]  # TODO - proper API
+page_whitelist = sys.argv[2:]
+
 prefix = "wiki/"
 mediawiki_ext = "mediawiki"
 markdown_ext = "md"
 user_table = "usernames.txt"
 user_blacklist = "user_blacklist.txt"
 default_email = "anonymous.contributor@example.org"
-base_url = "http://biopython.org/wiki/" # Used for images
-base_image_url = "http://biopython.org//w/images/" # Used for images
+base_url = "http://biopython.org/" # Used for images etc; prefix is appended to this!
+base_image_url = "http://biopython.org/w/images/" # Used for images
 
 
 git = "git" # assume on path
@@ -97,6 +105,13 @@ def clean_tag(tag):
         tag = tag[tag.index("}") + 1:]
     return tag
 
+
+def make_cannonical(title):
+    """Spaces to underscore; first letter upper case only."""
+    # Can not use .title(), e.g. 'Biopython small.jpg' --> 'Biopython Small.Jpg'
+    title = title.replace(" ", "_")
+    return title[0].upper() + title[1:].lower()
+
 def make_url(title):
     """Spaces to underscore; adds prefix."""
     return os.path.join(prefix, title.replace(" ", "_"))
@@ -147,8 +162,10 @@ def dump_revision(mw_filename, md_filename, text, title):
                              stderr=subprocess.PIPE,
                              )
     stdout, stderr = child.communicate()
+    if stderr or child.returncode:
+        print(stdout)
     if stderr:
-        print(stderr)
+        sys.stderr.write(stderr)
     if child.returncode:
         sys.stderr.write("Error %i from pandoc\n" % child.returncode)
     if not stdout:
@@ -163,7 +180,7 @@ def dump_revision(mw_filename, md_filename, text, title):
     return True
 
 def run(cmd_string):
-    print(cmd_string)
+    #print(cmd_string)
     return_code = os.system(cmd_string)
     if return_code:
         sys_exit("Error %i from: %s" % (return_code, cmd_string), return_code)
@@ -171,35 +188,49 @@ def run(cmd_string):
 def commit_revision(mw_filename, md_filename, username, date, comment):
     assert os.path.isfile(md_filename), md_filename
     assert os.path.isfile(mw_filename), mw_filename
-    cmd = '"%s" add "%s" "%s"' % (git, md_filename, mw_filename)
-    run(cmd)
     if not comment:
         comment = "Change to wiki page"
+    commit_files([md_filename, mw_filename], username, date, comment)
+
+def commit_files(filenames, username, date, comment):
+    assert filenames, "Nothing to commit: %r" % filenames
+    cmd = '"%s" add "%s"' % (git, '" "'.join(filenames))
+    run(cmd)
     # TODO - how to detect and skip empty commit?
     if username in user_mapping:
         author = user_mapping[username]
-    else:
+    elif username:
         global missing_users
         try:
             missing_users[username] += 1
         except KeyError:
             missing_users[username] = 1
         author = "%s <%s>" % (username, default_email)
+    else:
+        # git insists on a name, not just an email address:
+        author = "Anonymous Contributor <%s> % default_email"
     # In order to handle quotes etc in the message, rather than -m "%s"
     # using the -F option and piping to stdin.
     # cmd = '"%s" commit "%s" --date "%s" --author "%s" -m "%s" --allow-empty' \
     #       % (git, filename, date, author, comment)
-    child = subprocess.Popen([git, 'commit', mw_filename, md_filename,
+    child = subprocess.Popen([git, 'commit'] + filenames + [
                               '--date', date,
                               '--author', author,
                               '-F', '-',
                               '--allow-empty'],
                              stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE
                              )
     child.stdin.write(comment.encode("utf8"))
     stdout, stderr = child.communicate()
+    if child.returncode or stderr:
+        sys.stderr.write(stdout)
     if stderr:
-        print(stderr)
+        sys.stderr.write(stderr)
+    if child.returncode:
+        sys.stderr.write("Return code %i from git commit\n" % child.returncode)
+        sys.exit(child.returncode)
 
 
 print("=" * 60)
@@ -245,35 +276,81 @@ for event, element in e:
     else:
         sys_exit("Unexpected event %r with element %r" % (event, element))
 
-def get_image(title, date):
+def get_image(filename, title, date):
+    """Deduce the image URL for the revision via the date, and download it."""
+    #print("Fetching %s from %s" % (filename, date))
     #
+    # e.g. http://biopython.org/wiki/File:TorusDBN.png with two revisions,
+    #
+    # Current/latest file, date = '2011-08-23T23:26:00Z'
+    # <a href="/w/images/6/64/TorusDBN.png">23:26, 23 August 2011</a>
+    #
+    # Original file, date = '2011-08-23T22:05:18Z'
+    # <a href="/w/images/archive/6/64/20110823232600%21TorusDBN.png">22:05, 23 August 2011</a>
+    #
+    # --
+    #
+    # e.g. http://biopython.org/wiki/File:Biopython_small.jpg with two revisions,
+    #
+    # Current/latest file, date='2006-03-16T18:31:39Z'
+    # <a href="/w/images/e/e3/Biopython_small.jpg">18:26, 24 May 2006</a>
+    #
+    # Original file, date = '2006-03-16T18:31:39Z'
+    # <a href="/w/images/archive/e/e3/20060524182658%21Biopython_small.jpg">18:31, 16 March 2006</a>
+    #
+    # --
+    #
+    # TODO: Include year etc in the regular expression
     time = date.split('T')[1][:5] # using the time to help find the image version
-    # need to file for example <a href="/w/images/6/64/TorusDBN.png">23:26, 23 August 2011</a>
-    ilink = re.compile("""(<a href="/w/images/)([a-zA-Z0-9./]+)([">]+)""" + "(" + time + ")")
-    image_name = title.split(':')[1]
-    image_page = base_url + title
-    print(image_page)
+    re_text = """(<a href="/w/images/)([a-zA-Z0-9./%_-]+)([">]+)""" + "(" + time + ")"
+    ilink = re.compile(re_text)
+    image_page = base_url + make_url(title)
+    print("Inspecting HTML file page: %s" % image_page)
+    #print(re_text)
     html = urlopen(image_page).read()
-    image_url = ilink.findall(str(html))
-    assert(len(ilink.findall(str(html))) == 1)
-    img = urlopen(base_image_url + image_url[0][1])
-    localFile = open(make_filename(image_name), 'wb') 
+    assert '<table class="wikitable filehistory">' in html, "Don't recognise this:\n%s" % html
+    i = html.find('<table class="wikitable filehistory">')
+    table = html[i:]
+    i = table.find('</table>')
+    table = table[:i+8]
+
+    image_url = ilink.findall(table)
+    if len(ilink.findall(table)) != 1:
+        print("Failed to find link for date=%r" % date)
+        return False
+    assert len(ilink.findall(table)) == 1, "Found %i links in:\n%s" % (len(ilink.findall(str(html))), table)
+    url = base_image_url + image_url[0][1]
+    print("Fetching actual file URL: %s" % url)  # Should be title case!
+    img = urlopen(url)
+    localFile = open(filename, 'wb') 
     localFile.write(img.read())
     localFile.close()
+    return True
 
 def commit_image(title, username, date, comment):
     # commit image
-    get_image(title, date)
+    assert title.startswith("File:")
+    filename = os.path.join(prefix, make_cannonical(title[5:]))  # should already have extension
+    print("Fetching %s as of revision %s by %s" % (filename, date, username))
+    if get_image(filename, title, date):
+        commit_files([filename], username, date, comment)
+    else:
+        sys.stderr.write("Could not fetch %s from %s\n" % (filename, date))
+        sys.exit(1)
+
 
 print("=" * 60)
 print("Sorting changes by revision date...")
 for title, date, username, text, comment in c.execute('SELECT * FROM revisions ORDER BY date, title'):
     assert text is not None, date
+    if page_whitelist and title not in page_whitelist:
+        # Not wanted, ignore
+        # print("Ignoring: %s" % title)
+        continue
     if title.startswith("MediaWiki:") or title.startswith("Help:"):
         # Not interesting, ignore
         continue
     if title.startswith("File:"):
-        # TODO - capture the actuall file rather than the wiki page about the file
         # Example Title File:Wininst.png
         commit_image(title, username, date, comment)
         continue
