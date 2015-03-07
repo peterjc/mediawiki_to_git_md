@@ -252,8 +252,7 @@ def get_image(title, date):
     image_url = ilink.findall(str(html))
     assert(len(ilink.findall(str(html))) == 1)
     img = urllib.request.urlopen(base_image_url + image_url[0][1])
-    # TODO - where to save the images?
-    localFile = open('/wiki/' + image_name.lower(), 'wb') #need lowercase name
+    localFile = open(make_filename(image_name), 'wb') 
     localFile.write(img.read())
     localFile.close()
 
