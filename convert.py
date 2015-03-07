@@ -4,7 +4,12 @@ import re
 import sys
 import subprocess
 import sqlite3
-import urllib.request
+try:
+    # Python 3
+    from urllib.request import urlopen
+except ImportError:
+    # Python 2
+    from urllib2 import urlopen
 from xml.etree import cElementTree as ElementTree
 
 mediawiki_xml_dump = sys.argv[1]  # TODO - proper API
@@ -248,10 +253,10 @@ def get_image(title, date):
     image_name = title.split(':')[1]
     image_page = base_url + title
     print(image_page)
-    html = urllib.request.urlopen(image_page).read()
+    html = urlopen(image_page).read()
     image_url = ilink.findall(str(html))
     assert(len(ilink.findall(str(html))) == 1)
-    img = urllib.request.urlopen(base_image_url + image_url[0][1])
+    img = urlopen(base_image_url + image_url[0][1])
     localFile = open(make_filename(image_name), 'wb') 
     localFile.write(img.read())
     localFile.close()
