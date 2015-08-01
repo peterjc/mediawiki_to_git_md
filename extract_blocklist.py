@@ -2,7 +2,7 @@
 import os
 import sys
 
-print("Parse saved HTMl file of wiki/Special:BlockList into simple text file")
+print("Parse saved HTML file of wiki/Special:BlockList into simple text file")
 
 blocklist_html = sys.argv[1]
 output_text = "user_blacklist.txt"
