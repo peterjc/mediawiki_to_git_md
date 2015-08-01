@@ -72,7 +72,7 @@ def cleanup_mediawiki(text):
     # This tag was probably setup via SyntaxHighlight GeSHi for biopython.org's wiki
     #
     # <python>
-    # print("Hello world")
+    # import antigravity
     # </python>
     #
     # Replacing it with the following makes pandoc happy,
@@ -81,13 +81,13 @@ def cleanup_mediawiki(text):
     # import antigravity
     # </source>
     #
-    # Conversion to GitHub Flavour Markdown gives:
+    # Conversion by pandoc to GitHub Flavour Markdown gives:
     #
     # ``` Python
     # import antigravity
     # ```
     #
-    # Which is much nicer.
+    # which is much nicer.
     new = []
     for line in text.split("\n"):
         if line.rstrip() == "<python>":
@@ -108,7 +108,7 @@ def clean_tag(tag):
 
 def make_cannonical(title):
     """Spaces to underscore; first letter upper case only."""
-    # Can not use .title(), e.g. 'Biopython small.jpg' --> 'Biopython Small.Jpg'
+    # Cannot use .title(), e.g. 'Biopython small.jpg' --> 'Biopython Small.Jpg'
     title = title.replace(" ", "_")
     return title[0].upper() + title[1:].lower()
 
