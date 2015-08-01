@@ -39,9 +39,9 @@ commit.
 TODO
 ====
 
+* Document getting the MediaWiki dump XML file
 * Cope with unicode in the title / filename, e.g. BioPerl
 * Squash quick series of git commits from single author to
   a single page (with same or no comment)?
 * Skip git commits where there was no change in the markdown
 * Post-process pandoc output to fix wiki-links?
-* Automatically deal with images uploaded to the wiki?
