@@ -213,11 +213,12 @@ def commit_files(filenames, username, date, comment):
     # using the -F option and piping to stdin.
     # cmd = '"%s" commit "%s" --date "%s" --author "%s" -m "%s" --allow-empty' \
     #       % (git, filename, date, author, comment)
-    child = subprocess.Popen([git, 'commit'] + filenames + [
+    cmd = [git, 'commit'] + filenames + [
                               '--date', date,
                               '--author', author,
                               '-F', '-',
-                              '--allow-empty'],
+                              '--allow-empty']
+    child = subprocess.Popen(cmd,
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE
@@ -230,6 +231,7 @@ def commit_files(filenames, username, date, comment):
         sys.stderr.write(stderr)
     if child.returncode:
         sys.stderr.write("Return code %i from git commit\n" % child.returncode)
+        sys.stderr.write("Popen(%r, ...)\n" % cmd)
         sys.exit(child.returncode)
 
 
