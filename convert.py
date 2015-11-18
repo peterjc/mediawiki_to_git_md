@@ -42,6 +42,12 @@ user_mapping = dict()
 with open(user_table, "r") as handle:
     for line in handle:
         username, github = line.strip().split("\t")
+        # TODO - expand this with a regular expression or something
+        if " <" not in github or "@" not in github or ">" not in github:
+            sys.stderr.write("Invalid entry for %r: %r\n" % (username, github))
+            sys.stderr.write("Second column in %s should use the format: name <email>, e.g.\n" % user_table)
+            sys.stderr.write("A.N. Other <a.n.other@example.org>\n")
+            sys.exit(1)
         user_mapping[username] = github
 
 blacklist = set()
