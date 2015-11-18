@@ -25,10 +25,10 @@ prefix = "wiki/"
 mediawiki_ext = "mediawiki"
 markdown_ext = "md"
 user_table = "usernames.txt"
-user_blacklist = "user_blacklist.txt"
+user_blacklist = "user_blocklist.txt"
 default_email = "anonymous.contributor@example.org"
-base_url = "http://biopython.org/" # Used for images etc; prefix is appended to this!
-base_image_url = "http://biopython.org/w/images/" # Used for images
+base_url = "http://www.open-bio.org/" # Used for images etc; prefix is appended to this!
+base_image_url = base_url + "w/images/" # Used for images
 
 
 git = "git" # assume on path
