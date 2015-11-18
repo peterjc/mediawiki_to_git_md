@@ -39,9 +39,74 @@ commit.
 TODO
 ====
 
-* Document getting the MediaWiki dump XML file
 * Cope with unicode in the title / filename, e.g. BioPerl
 * Squash quick series of git commits from single author to
   a single page (with same or no comment)?
 * Skip git commits where there was no change in the markdown
 * Post-process pandoc output to fix wiki-links?
+
+
+MediaWiki Export to XML
+=======================
+
+We use the ``dumpBackup.php`` script, the manual for this is
+online at https://www.mediawiki.org/wiki/Manual:dumpBackup.php
+
+First, log into your mediawiki instance and find the PHP file
+``.../maintenance/dumpBackup.php`` and your ``../LocalSettings.php``
+file. Then try::
+
+   $ cd ~
+   $ php .../maintenance/dumpBackup.php --conf .../LocalSettings.php --full > mediawiki_dump.xml
+
+Assuming you are running the conversion into MarkDown locally,
+zip-up and scp the XML dump back to your machine.
+
+MediaWiki Block List
+====================
+
+You can save the HTML page of your wiki's ``Special:BlockList`` page
+and parse it with::
+
+    $ curl --o block_list.html http://example.org/wiki/Special:BlockList
+
+Then run the script from this repository to pull out the user names::
+
+    $ ../mediawiki_to_git_md/extract_blocklist.py block_list.html
+    Parse saved HTML file of wiki/Special:BlockList into simple text file
+    Extracted 50 users from 'block_list.html' into 'user_blacklist.txt'
+
+By default the URL shows the first 50 blocked users only, and I had no
+success doing it at the command line so increased the limit and saved the
+full lists via a browser and reran the extraction to get past this.
+
+Usernames mapping
+=================
+
+You will need to fill this in, try the conversion once to see which
+names to focus on collecting:
+
+    $ emacs usernames.txt
+
+This is a simple two column tab separated table, mapping MediaWiki
+usernames (column one) to names and email address as used for their
+GitHub accounts (column two), e.g.::
+
+    AnOther (tab) A. N. Other <a.n.other@example.com>
+
+MediWiki Conversion
+===================
+
+Now run the conversion in your GitHub Pages repository, where git is
+already on the right branch and ready for new commits to be made:
+
+    $ ../mediawiki_to_git_md/convert.py mediawiki_dump.xml 
+    ============================================================
+    Parsing XML and saving revisions by page.
+    ============================================================
+    Sorting changes by revision date...
+    ...
+
+If it works, it will print a summary of the missing usernames which
+you should probably add to ``usernames.txt`` and then after resetting
+your branches, retry the conversion.
