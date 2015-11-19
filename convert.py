@@ -41,7 +41,13 @@ assert os.path.isdir(".git"), "Expected to be in a Git repository!"
 user_mapping = dict()
 with open(user_table, "r") as handle:
     for line in handle:
-        username, github = line.strip().split("\t")
+        if not line.strip():
+            continue
+        try:
+            username, github = line.strip().split("\t")
+        except ValueError:
+            sys.stderr.write("Invalid entry in %s: %s" % (user_table, line))
+            sys.exit(1)
         # TODO - expand this with a regular expression or something
         if " <" not in github or "@" not in github or ">" not in github:
             sys.stderr.write("Invalid entry for %r: %r\n" % (username, github))
