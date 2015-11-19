@@ -371,6 +371,9 @@ for title, date, username, text, comment in c.execute('SELECT * FROM revisions O
     if title.startswith("User:") or title.startswith("Talk:") or title.startswith("User_talk:"):
         # Not wanted, ignore
         continue
+    if title.startswith("Template:") or title.startswith("Category:"):
+        # Can't handle these properly (yet)
+        continue
     md_filename = make_filename(title, markdown_ext)
     mw_filename = make_filename(title, mediawiki_ext)
     print("Converting %s as of revision %s by %s" % (md_filename, date, username))
