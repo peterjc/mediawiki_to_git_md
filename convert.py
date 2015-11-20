@@ -187,7 +187,7 @@ def dump_revision(mw_filename, md_filename, text, title):
                 handle.write("title: %s\n" % title)
                 handle.write("redirect_to: /%s\n" % make_url(redirect))
                 handle.write("---\n\n")
-                handle.write("You should automatically be redirected to [%s](%s)\n"
+                handle.write("You should automatically be redirected to [%s](/%s)\n"
                              % (redirect, make_url(redirect)))
             print("Setup redirection %s --> %s" % (title, redirect))
             return True
