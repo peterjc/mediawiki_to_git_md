@@ -99,7 +99,17 @@ def cleanup_mediawiki(text):
     # import antigravity
     # ```
     #
-    # which is much nicer.
+    # Which is much nicer.
+    #
+    # =================================================
+    #
+    # I may have been misled by old links, but right now I don't
+    # think there is an easy way to get a table-of-contents with
+    # (GitHub Flavoured) Markdown which works on GitHub pages.
+    #
+    # Meanwhile the MediaWiki __TOC__ etc get left in the .md
+    # so I'm just going to remove them here.
+    #
     new = []
     for line in text.split("\n"):
         if line.rstrip() == "<python>":
@@ -108,6 +118,8 @@ def cleanup_mediawiki(text):
             line = "<source lang=Perl>"
         elif line.rstrip() in ["</python>", "</perl>"]:
             line = "</source>"
+        if line.rstrip() in ["__TOC__", "__FORCETOC__", "__NOTOC__"]:
+            continue
         new.append(line)
     return "\n".join(new)
 
