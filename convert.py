@@ -68,6 +68,9 @@ if os.path.isfile(db):
     os.remove(db)
 conn = sqlite3.connect(db)
 c = conn.cursor()
+# Going to use this same table for BOTH plain text revisions to pages
+# AND for base64 encoded uploads for file attachments, because want
+# to sort both by date and turn each into a commit.
 c.execute("CREATE TABLE revisions "
           "(title text, date text, username text, content text, comment text)")
 
@@ -289,9 +292,12 @@ for event, element in e:
     tag = clean_tag(element.tag)
     if event == "start":
         if tag == "page":
-            assert title is None
-        if tag == "revision":
-            assert date is None
+            assert title is None, title
+            assert date is None, date
+        if tag == "revision" or tag == "upload":
+            assert date is None, "%r for %r" % (date, title)
+        if tag == "contents":
+            assert element.attrib["encoding"] == "base64"
     elif event == "end":
         if tag == "title":
             title = element.text.strip()
@@ -304,19 +310,35 @@ for event, element in e:
             username = element.text.strip()
         elif tag == "text":
             text = element.text
+        elif tag == "contents":
+            # Used in uploads
+            text = element.text.strip()
         elif tag == "revision":
             if username is None:
                 username = ""
             if comment is None:
                 comment = ""
             if username not in blacklist:
-                if text is not None or title.startswith("File:"):
+                if title.startswith("File:"):
+                    #print("Ignoring revision for %s in favour of upload entry" % title)
+                    pass
+                elif text is not None:
                     #print("Recording '%s' as of revision %s by %s" % (title, date, username))
                     c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?)",
                               (title, date, username, text, comment))
             date = username = text = comment = None
         elif tag == "upload":
+            assert title.startswith("File:")
             # Want to treat like a revision?
+            if username is None:
+                username = ""
+            if comment is None:
+                comment = ""
+            if username not in blacklist:
+                if text is not None or title.startswith("File:"):
+                    #print("Recording '%s' as of upload %s by %s" % (title, date, username))
+                    c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?)",
+                              (title, date, username, text, comment))
             date = username = text = comment = None
         elif tag == "page":
             assert date is None, date
