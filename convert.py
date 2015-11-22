@@ -249,6 +249,8 @@ def commit_files(filenames, username, date, comment):
     else:
         # git insists on a name, not just an email address:
         author = "Anonymous Contributor <%s> % default_email"
+    if not comment:
+        comment = "No comment"
     # In order to handle quotes etc in the message, rather than -m "%s"
     # using the -F option and piping to stdin.
     # cmd = '"%s" commit "%s" --date "%s" --author "%s" -m "%s" --allow-empty' \
@@ -296,7 +298,8 @@ for event, element in e:
         elif tag == "timestamp":
             date = element.text.strip()
         elif tag == "comment":
-            comment = element.text.strip()
+            if element.text is not None:
+                comment = element.text.strip()
         elif tag == "username":
             username = element.text.strip()
         elif tag == "text":
@@ -306,14 +309,17 @@ for event, element in e:
                 username = ""
             if comment is None:
                 comment = ""
-            if text is not None and username not in blacklist:
-                #print("Recording '%s' as of revision %s by %s" % (title, date, username))
-                assert text is not None, date
-                c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?)",
-                          (title, date, username, text, comment))
+            if username not in blacklist:
+                if text is not None or title.startswith("File:"):
+                    #print("Recording '%s' as of revision %s by %s" % (title, date, username))
+                    c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?)",
+                              (title, date, username, text, comment))
+            date = username = text = comment = None
+        elif tag == "upload":
+            # Want to treat like a revision?
             date = username = text = comment = None
         elif tag == "page":
-            assert date is None
+            assert date is None, date
             title = date = username = text = comment = None
     else:
         sys_exit("Unexpected event %r with element %r" % (event, element))
@@ -384,7 +390,9 @@ def commit_image(title, username, date, comment):
 print("=" * 60)
 print("Sorting changes by revision date...")
 for title, date, username, text, comment in c.execute('SELECT * FROM revisions ORDER BY date, title'):
-    assert text is not None, date
+    if text is None:
+        assert title.startswith("File:"), date
+    # assert text is not None, date
     if page_whitelist and title not in page_whitelist:
         # Not wanted, ignore
         # print("Ignoring: %s" % title)
