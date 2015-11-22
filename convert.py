@@ -39,6 +39,9 @@ missing_users = dict()
 
 assert os.path.isdir(".git"), "Expected to be in a Git repository!"
 
+if not os.path.isdir(prefix):
+    os.mkdir(prefix)
+
 user_mapping = dict()
 with open(user_table, "r") as handle:
     for line in handle:
@@ -73,7 +76,7 @@ c = conn.cursor()
 # AND for base64 encoded uploads for file attachments, because want
 # to sort both by date and turn each into a commit.
 c.execute("CREATE TABLE revisions "
-          "(title text, date text, username text, content text, comment text)")
+          "(title text, filename text, date text, username text, content text, comment text)")
 
 def sys_exit(msg, error_level=1):
     sys.stderr.write(msg.rstrip() + "\n")
@@ -287,6 +290,7 @@ print("=" * 60)
 print("Parsing XML and saving revisions by page.")
 usernames = set()
 title = None
+filename = None
 date = None
 comment = None
 username = None
@@ -316,6 +320,9 @@ for event, element in e:
         elif tag == "contents":
             # Used in uploads
             text = element.text.strip()
+        elif tag == "filename":
+            # Expected in uploads
+            filename = element.text.strip()
         elif tag == "revision":
             if username is None:
                 username = ""
@@ -327,9 +334,9 @@ for event, element in e:
                     pass
                 elif text is not None:
                     #print("Recording '%s' as of revision %s by %s" % (title, date, username))
-                    c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?)",
-                              (title, date, username, text, comment))
-            date = username = text = comment = None
+                    c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
+                              (title, filename, date, username, text, comment))
+            filename = date = username = text = comment = None
         elif tag == "upload":
             assert title.startswith("File:")
             # Want to treat like a revision?
@@ -340,19 +347,20 @@ for event, element in e:
             if username not in blacklist:
                 if text is not None or title.startswith("File:"):
                     #print("Recording '%s' as of upload %s by %s" % (title, date, username))
-                    c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?)",
-                              (title, date, username, text, comment))
-            date = username = text = comment = None
+                    c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
+                              (title, filename, date, username, text, comment))
+            filename = date = username = text = comment = None
         elif tag == "page":
             assert date is None, date
-            title = date = username = text = comment = None
+            title = filename = date = username = text = comment = None
     else:
         sys_exit("Unexpected event %r with element %r" % (event, element))
 
-def commit_file(title, date, username, contents, comment):
+def commit_file(title, filename, date, username, contents, comment):
     # commit an image or other file from its base64 encoded representation
     assert title.startswith("File:")
-    filename = os.path.join(prefix, make_cannonical(title[5:]))  # should already have extension
+    if not filename:
+        filename = os.path.join(prefix, make_cannonical(title[5:]))  # should already have extension
     print("Committing %s as of upload %s by %s" % (filename, date, username))
     with open(filename, "wb") as handle:
         handle.write(base64.b64decode(contents))
@@ -375,7 +383,9 @@ if sys.platform != "linux2":
                 break
 print("=" * 60)
 print("Sorting changes by revision date...")
-for title, date, username, text, comment in c.execute('SELECT * FROM revisions ORDER BY date, title'):
+for title, filename, date, username, text, comment in c.execute('SELECT * FROM revisions ORDER BY date, title'):
+    if filename:
+        filename = os.path.join(prefix, filename)
     if text is None:
         assert title.startswith("File:"), date
     # assert text is not None, date
@@ -389,7 +399,7 @@ for title, date, username, text, comment in c.execute('SELECT * FROM revisions O
     if title.startswith("File:"):
         # Example Title File:Wininst.png
         # TODO - capture the preferred filename from the XML!
-        commit_file(title, date, username, text, comment)
+        commit_file(title, filename, date, username, text, comment)
         continue
     if title.startswith("User:") or title.startswith("Talk:") or title.startswith("User_talk:"):
         # Not wanted, ignore
@@ -397,6 +407,7 @@ for title, date, username, text, comment in c.execute('SELECT * FROM revisions O
     if title.startswith("Template:") or title.startswith("Category:"):
         # Can't handle these properly (yet)
         continue
+    assert filename is None
     md_filename = make_filename(title, markdown_ext)
     mw_filename = make_filename(title, mediawiki_ext)
     print("Converting %s as of revision %s by %s" % (md_filename, date, username))
