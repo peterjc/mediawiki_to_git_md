@@ -238,6 +238,8 @@ def commit_revision(mw_filename, md_filename, username, date, comment):
 
 def commit_files(filenames, username, date, comment):
     assert filenames, "Nothing to commit: %r" % filenames
+    for f in filenames:
+        assert os.path.isfile(f), f
     cmd = '"%s" add "%s"' % (git, '" "'.join(filenames))
     run(cmd)
     # TODO - how to detect and skip empty commit?
@@ -356,6 +358,21 @@ def commit_file(title, date, username, contents, comment):
         handle.write(base64.b64decode(contents))
     commit_files([filename], username, date, comment)
 
+if sys.platform != "linux2":
+    #print("=" * 60)
+    #print("Checking for potential name clashes")
+    names = dict()
+    for title, in c.execute('SELECT DISTINCT title FROM revisions ORDER BY title'):
+        if title.lower() not in names:
+            names[title.lower()] = title
+        else:
+            if names[title.lower()] != title:
+                print("WARNING: Multiple case variants exist, e.g.")
+                print(" - " + title)
+                print(" - " + names[title.lower()])
+                print("If your file system cannot support such filenames at the same time")
+                print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
+                break
 print("=" * 60)
 print("Sorting changes by revision date...")
 for title, date, username, text, comment in c.execute('SELECT * FROM revisions ORDER BY date, title'):
