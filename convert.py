@@ -75,6 +75,13 @@ def sys_exit(msg, error_level=1):
     sys.stderr.write(msg.rstrip() + "\n")
     sys.exit(error_level)
 
+def un_div(text):
+    """Remove wrapping <div...>text</div> leaving just text."""
+    if text.strip().startswith("<div ") and text.strip().endswith("</div>"):
+        text = text.strip()[:-6]
+        text = text[text.index(">") + 1:].strip()
+    return text
+
 def cleanup_mediawiki(text):
     """Modify mediawiki markup to make it pandoc ready.
 
@@ -118,7 +125,7 @@ def cleanup_mediawiki(text):
             line = "<source lang=Perl>"
         elif line.rstrip() in ["</python>", "</perl>"]:
             line = "</source>"
-        if line.rstrip() in ["__TOC__", "__FORCETOC__", "__NOTOC__"]:
+        if un_div(line) in ["__TOC__", "__FORCETOC__", "__NOTOC__"]:
             continue
         new.append(line)
     return "\n".join(new)
