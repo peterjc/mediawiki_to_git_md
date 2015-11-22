@@ -4,6 +4,7 @@ import re
 import sys
 import subprocess
 import sqlite3
+import base64
 try:
     # Python 3
     from urllib.request import urlopen
@@ -346,68 +347,14 @@ for event, element in e:
     else:
         sys_exit("Unexpected event %r with element %r" % (event, element))
 
-def get_image(filename, title, date):
-    """Deduce the image URL for the revision via the date, and download it."""
-    #print("Fetching %s from %s" % (filename, date))
-    #
-    # e.g. http://biopython.org/wiki/File:TorusDBN.png with two revisions,
-    #
-    # Current/latest file, date = '2011-08-23T23:26:00Z'
-    # <a href="/w/images/6/64/TorusDBN.png">23:26, 23 August 2011</a>
-    #
-    # Original file, date = '2011-08-23T22:05:18Z'
-    # <a href="/w/images/archive/6/64/20110823232600%21TorusDBN.png">22:05, 23 August 2011</a>
-    #
-    # --
-    #
-    # e.g. http://biopython.org/wiki/File:Biopython_small.jpg with two revisions,
-    #
-    # Current/latest file, date='2006-03-16T18:31:39Z'
-    # <a href="/w/images/e/e3/Biopython_small.jpg">18:26, 24 May 2006</a>
-    #
-    # Original file, date = '2006-03-16T18:31:39Z'
-    # <a href="/w/images/archive/e/e3/20060524182658%21Biopython_small.jpg">18:31, 16 March 2006</a>
-    #
-    # --
-    #
-    # TODO: Include year etc in the regular expression
-    time = date.split('T')[1][:5] # using the time to help find the image version
-    re_text = """(<a href="/w/images/)([a-zA-Z0-9./%_-]+)([">]+)""" + "(" + time + ")"
-    ilink = re.compile(re_text)
-    image_page = base_url + make_url(title)
-    print("Inspecting HTML file page: %s" % image_page)
-    #print(re_text)
-    html = urlopen(image_page).read()
-    assert '<table class="wikitable filehistory">' in html, "Don't recognise this:\n%s" % html
-    i = html.find('<table class="wikitable filehistory">')
-    table = html[i:]
-    i = table.find('</table>')
-    table = table[:i+8]
-
-    image_url = ilink.findall(table)
-    if len(ilink.findall(table)) != 1:
-        print("Failed to find link for date=%r" % date)
-        return False
-    assert len(ilink.findall(table)) == 1, "Found %i links in:\n%s" % (len(ilink.findall(str(html))), table)
-    url = base_image_url + image_url[0][1]
-    print("Fetching actual file URL: %s" % url)  # Should be title case!
-    img = urlopen(url)
-    localFile = open(filename, 'wb') 
-    localFile.write(img.read())
-    localFile.close()
-    return True
-
-def commit_image(title, username, date, comment):
-    # commit image
+def commit_file(title, date, username, contents, comment):
+    # commit an image or other file from its base64 encoded representation
     assert title.startswith("File:")
     filename = os.path.join(prefix, make_cannonical(title[5:]))  # should already have extension
-    print("Fetching %s as of revision %s by %s" % (filename, date, username))
-    if get_image(filename, title, date):
-        commit_files([filename], username, date, comment)
-    else:
-        sys.stderr.write("Could not fetch %s from %s\n" % (filename, date))
-        sys.exit(1)
-
+    print("Committing %s as of upload %s by %s" % (filename, date, username))
+    with open(filename, "wb") as handle:
+        handle.write(base64.b64decode(contents))
+    commit_files([filename], username, date, comment)
 
 print("=" * 60)
 print("Sorting changes by revision date...")
@@ -424,7 +371,8 @@ for title, date, username, text, comment in c.execute('SELECT * FROM revisions O
         continue
     if title.startswith("File:"):
         # Example Title File:Wininst.png
-        commit_image(title, username, date, comment)
+        # TODO - capture the preferred filename from the XML!
+        commit_file(title, date, username, text, comment)
         continue
     if title.startswith("User:") or title.startswith("Talk:") or title.startswith("User_talk:"):
         # Not wanted, ignore
