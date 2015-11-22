@@ -57,7 +57,10 @@ First, log into your mediawiki instance and find the PHP file
 file. Then try::
 
    $ cd ~
-   $ php .../maintenance/dumpBackup.php --conf .../LocalSettings.php --full > mediawiki_dump.xml
+   $ php .../maintenance/dumpBackup.php --conf .../LocalSettings.php --full --include-files --uploads > mediawiki_dump.xml
+
+Note the inclusion of ``--include-files --uploads`` to ensure
+the log includes all the images etc.
 
 Assuming you are running the conversion into MarkDown locally,
 zip-up and scp the XML dump back to your machine.
