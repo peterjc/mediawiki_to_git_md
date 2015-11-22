@@ -82,6 +82,9 @@ def un_div(text):
         text = text[text.index(">") + 1:].strip()
     return text
 
+print  un_div('<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFFFFF">[[Image:Pear.png|left|The Bosc Pear]]</div>')
+assert un_div('<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFFFFF">[[Image:Pear.png|left|The Bosc Pear]]</div>') == '[[Image:Pear.png|left|The Bosc Pear]]'
+
 def cleanup_mediawiki(text):
     """Modify mediawiki markup to make it pandoc ready.
 
@@ -125,11 +128,17 @@ def cleanup_mediawiki(text):
             line = "<source lang=Perl>"
         elif line.rstrip() in ["</python>", "</perl>"]:
             line = "</source>"
-        if un_div(line) in ["__TOC__", "__FORCETOC__", "__NOTOC__"]:
+        undiv = un_div(line)
+        if undiv in ["__TOC__", "__FORCETOC__", "__NOTOC__"]:
             continue
+        elif undiv.startswith("[[Image:") and undiv.endswith("]]"):
+            # Markdown image wrapped in a div does not render on Github Pages,
+            # remove the div and any attempt at styling it (e.g. alignment)
+            line = undiv
         new.append(line)
     return "\n".join(new)
 
+assert cleanup_mediawiki('<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFFFFF">[[Image:Pear.png|left|The Bosc Pear]]</div>') == '[[Image:Pear.png|left|The Bosc Pear]]'
 
 def clean_tag(tag):
     while "}" in tag:
