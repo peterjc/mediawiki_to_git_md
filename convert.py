@@ -129,6 +129,7 @@ def cleanup_mediawiki(text):
     #
     new = []
     for line in text.split("\n"):
+        line = line.replace("\xe2\x80\x8e", "")  # LEFT-TO-RIGHT
         if line.rstrip() == "<python>":
             line = "<source lang=Python>"
         elif line.rstrip() == "<perl>":
