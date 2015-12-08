@@ -1,16 +1,9 @@
 #!/usr/bin/env python
 import os
-import re
 import sys
 import subprocess
 import sqlite3
 import base64
-try:
-    # Python 3
-    from urllib.request import urlopen
-except ImportError:
-    # Python 2
-    from urllib2 import urlopen
 from xml.etree import cElementTree as ElementTree
 
 if len(sys.argv) == 1:

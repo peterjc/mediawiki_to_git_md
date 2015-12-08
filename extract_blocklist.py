@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import os
 import sys
 
 print("Parse saved HTML file of wiki/Special:BlockList into simple text file")
