@@ -71,7 +71,7 @@ MediaWiki Block List
 You can save the HTML page of your wiki's ``Special:BlockList`` page
 and parse it with::
 
-    $ curl -o blocklist.html "http://biojava.org/w/index.php/Special:BlockList?wpTarget=&limit=500"
+    $ curl -o blocklist.html "http://example.org/w/index.php/Special:BlockList?wpTarget=&limit=500"
 
 Then run the script from this repository to pull out the user names::
 
