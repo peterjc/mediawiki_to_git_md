@@ -71,17 +71,13 @@ MediaWiki Block List
 You can save the HTML page of your wiki's ``Special:BlockList`` page
 and parse it with::
 
-    $ curl --o blocklist.html http://example.org/wiki/Special:BlockList
+    $ curl -o blocklist.html "http://biojava.org/w/index.php/Special:BlockList?wpTarget=&limit=500"
 
 Then run the script from this repository to pull out the user names::
 
     $ ../mediawiki_to_git_md/extract_blocklist.py block_list.html
     Parse saved HTML file of wiki/Special:BlockList into simple text file
     Extracted 50 users from 'blocklist.html' into 'user_blocklist.txt'
-
-By default the URL shows the first 50 blocked users only, and I had no
-success doing it at the command line so increased the limit and saved the
-full lists via a browser and reran the extraction to get past this.
 
 Usernames mapping
 =================
