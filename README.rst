@@ -83,7 +83,7 @@ Usernames mapping
 =================
 
 You will need to fill this in, try the conversion once to see which
-names to focus on collecting:
+names to focus on collecting::
 
     $ emacs usernames.txt
 
@@ -108,4 +108,9 @@ already on the right branch and ready for new commits to be made:
 
 If it works, it will print a summary of the missing usernames which
 you should probably add to ``usernames.txt`` and then after resetting
-your branches, retry the conversion.
+your branches, retry the conversion. e.g.::
+
+    $ git checkout pre_auto_import && git branch -D master && git checkout -b master
+    Switched to branch 'pre_auto_import'
+    Deleted branch master (was a348cc5).
+    Switched to a new branch 'master'
