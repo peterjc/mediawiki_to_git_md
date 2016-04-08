@@ -99,13 +99,13 @@ def cleanup_mediawiki(text):
     #
     # Replacing it with the following makes pandoc happy,
     #
-    # <source lang=Python>
+    # <source lang=python>
     # import antigravity
     # </source>
     #
     # Conversion by pandoc to GitHub Flavour Markdown gives:
     #
-    # ``` Python
+    # ``` python
     # import antigravity
     # ```
     #
@@ -125,9 +125,9 @@ def cleanup_mediawiki(text):
         # line is already unicode
         line = line.replace("\xe2\x80\x8e".decode("utf-8"), "")  # LEFT-TO-RIGHT
         if line.rstrip() == "<python>":
-            line = "<source lang=Python>"
+            line = "<source lang=python>"
         elif line.rstrip() == "<perl>":
-            line = "<source lang=Perl>"
+            line = "<source lang=perl>"
         elif line.rstrip() in ["</python>", "</perl>"]:
             line = "</source>"
         undiv = un_div(line)
