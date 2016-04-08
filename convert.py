@@ -399,9 +399,12 @@ for title, filename, date, username, text, comment in c.execute('SELECT * FROM r
     if title.startswith("User:") or title.startswith("Talk:") or title.startswith("User_talk:"):
         # Not wanted, ignore
         continue
-    if title.startswith("Template:") or title.startswith("Category:"):
+    if title.startswith("Template:"):
         # Can't handle these properly (yet)
         continue
+    # if title.startswith("Category:"):
+    #     # TODO - may need to insert some Jekyll template magic?
+    #     # See https://github.com/peterjc/mediawiki_to_git_md/issues/6
     assert filename is None
     md_filename = make_filename(title, markdown_ext)
     mw_filename = make_filename(title, mediawiki_ext)
