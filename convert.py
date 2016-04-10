@@ -90,6 +90,8 @@ def cleanup_mediawiki(text):
 
     Long term this needs to be highly configurable on a site-by-site
     basis, but for now I'll put local hacks here.
+
+    Returns tuple: cleaned up text, list of any categories
     """
     # This tag was probably setup via SyntaxHighlight GeSHi for biopython.org's wiki
     #
@@ -121,6 +123,7 @@ def cleanup_mediawiki(text):
     # so I'm just going to remove them here.
     #
     new = []
+    categories = []
     for line in text.split("\n"):
         # line is already unicode
         line = line.replace("\xe2\x80\x8e".decode("utf-8"), "")  # LEFT-TO-RIGHT
@@ -137,10 +140,19 @@ def cleanup_mediawiki(text):
             # Markdown image wrapped in a div does not render on Github Pages,
             # remove the div and any attempt at styling it (e.g. alignment)
             line = undiv
+        # Look for any category tag, usually done as a single line:
+        if "[[Category:" in line:
+            tag = line[line.index("[[Category:") + 11:]
+            tag = tag[:tag.index("]]")]
+            assert ("[[Category:%s]]" % tag) in line, "Infered %r from %s" % (tag, line)
+            categories.append(tag)
+            line = line.replace("[[Category:%s]]" % tag, "").strip()
+            if not line:
+                continue
         new.append(line)
-    return "\n".join(new)
+    return "\n".join(new), categories
 
-assert cleanup_mediawiki('<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFFFFF">[[Image:Pear.png|left|The Bosc Pear]]</div>') == '[[Image:Pear.png|left|The Bosc Pear]]'
+assert cleanup_mediawiki('<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFFFFF">[[Image:Pear.png|left|The Bosc Pear]]</div>') == ('[[Image:Pear.png|left|The Bosc Pear]]', [])
 
 def clean_tag(tag):
     while "}" in tag:
@@ -177,8 +189,9 @@ def dump_revision(mw_filename, md_filename, text, title):
 
     folder, local_filename = os.path.split(mw_filename)
     mkdir_recursive(folder)
+    text, categories = cleanup_mediawiki(text)
     with open(mw_filename, "w") as handle:
-        handle.write(cleanup_mediawiki(text).encode("utf8"))
+        handle.write(text.encode("utf8"))
 
     if text.strip().startswith("#REDIRECT [[") and text.strip().endswith("]]"):
         redirect = text.strip()[12:-2]
@@ -217,6 +230,11 @@ def dump_revision(mw_filename, md_filename, text, title):
     with open(md_filename, "w") as handle:
         handle.write("---\n")
         handle.write("title: %s\n" % title)
+        if categories:
+            # Map them to Jekyll tags as can have more than one per page:
+            handle.write("tags:\n")
+            for category in categories:
+                handle.write(" - %s\n" % category)
         handle.write("---\n\n")
         handle.write(stdout)
     return True
