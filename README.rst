@@ -114,3 +114,12 @@ your branches, retry the conversion. e.g.::
     Switched to branch 'pre_auto_import'
     Deleted branch master (was a348cc5).
     Switched to a new branch 'master'
+
+Jekyll Setup
+============
+
+The converted pages are left with the default Jekyll layout, except
+Category:XXX pages are mapped to layout tagpage, and given tag XXX.
+This assumes you have defined ``_layout/tagpage.html`` which will add
+the automatic listing of all pages with the tag XXX (using tags since
+Jekyll does not allow multiple categories per page).

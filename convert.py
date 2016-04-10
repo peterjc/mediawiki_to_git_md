@@ -234,7 +234,14 @@ def dump_revision(mw_filename, md_filename, text, title):
     with open(md_filename, "w") as handle:
         handle.write("---\n")
         handle.write("title: %s\n" % title)
-        if categories:
+        if title.startswith("Category:"):
+            # This assumes have layout template called tagpage
+            # which will insert the tag listing automatically
+            # i.e. Behaves like MediaWiki for Category:XXX
+            # where we mapped XXX as a tag in Jekyll
+            handle.write("layout: tagpage\n")
+            handle.write("tag: %s\n" % title[9:])
+        elif categories:
             # Map them to Jekyll tags as can have more than one per page:
             handle.write("tags:\n")
             for category in categories:
