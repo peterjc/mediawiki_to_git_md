@@ -149,6 +149,10 @@ def cleanup_mediawiki(text):
             line = line.replace("[[Category:%s]]" % tag, "").strip()
             if not line:
                 continue
+        # Special case fix for any category links,
+        # See https://github.com/jgm/pandoc/issues/2849
+        if "[[:Category:" in line:
+            line = line.replace("[[:Category:", "[[Category%3A")
         new.append(line)
     return "\n".join(new), categories
 
