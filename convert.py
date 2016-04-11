@@ -24,6 +24,7 @@ default_email = "anonymous.contributor@example.org"
 base_url = "http://www.open-bio.org/" # Used for images etc; prefix is appended to this!
 base_image_url = base_url + "w/images/" # Used for images
 page_prefixes_to_ignore = ["Help:", "MediaWiki:", "Talk:", "User talk:"] # Beware spaces vs _
+default_layout = "wiki" # Can also use None; note get tagpage for category listings
 git = "git" # assume on path
 pandoc = "pandoc" # assume on path
 
@@ -249,11 +250,15 @@ def dump_revision(mw_filename, md_filename, text, title):
             # where we mapped XXX as a tag in Jekyll
             handle.write("layout: tagpage\n")
             handle.write("tag: %s\n" % title[9:])
-        elif categories:
-            # Map them to Jekyll tags as can have more than one per page:
-            handle.write("tags:\n")
-            for category in categories:
-                handle.write(" - %s\n" % category)
+        else:
+            # Note a category page,
+            if default_layout:
+                handle.write("layout: %s\n" % default_layout)
+            if categories:
+                # Map them to Jekyll tags as can have more than one per page:
+                handle.write("tags:\n")
+                for category in categories:
+                    handle.write(" - %s\n" % category)
         handle.write("---\n\n")
         handle.write(stdout)
     return True
