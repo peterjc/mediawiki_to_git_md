@@ -82,8 +82,10 @@ def un_div(text):
         text = text[text.index(">") + 1:].strip()
     return text
 
-print  un_div('<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFFFFF">[[Image:Pear.png|left|The Bosc Pear]]</div>')
-assert un_div('<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFFFFF">[[Image:Pear.png|left|The Bosc Pear]]</div>') == '[[Image:Pear.png|left|The Bosc Pear]]'
+tmp = '<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFFFFF">[[Image:Pear.png|left|The Bosc Pear]]</div>'
+#print(un_div(tmp))
+assert un_div(tmp) == '[[Image:Pear.png|left|The Bosc Pear]]', un_div(tmp)
+del tmp
 
 def cleanup_mediawiki(text):
     """Modify mediawiki markup to make it pandoc ready.
@@ -127,10 +129,10 @@ def cleanup_mediawiki(text):
     for line in text.split("\n"):
         # line is already unicode
         line = line.replace("\xe2\x80\x8e".decode("utf-8"), "")  # LEFT-TO-RIGHT
-        if line.rstrip() == "<python>":
-            line = "<source lang=python>"
-        elif line.rstrip() == "<perl>":
-            line = "<source lang=perl>"
+        if line.startswith("<python>"):
+            line = ("<source lang=python>\n" + line[8:]).strip()
+        elif line.startswith("<perl>"):
+            line = ("<source lang=perl>\n" + line[6:]).strip()
         elif line.rstrip() in ["</python>", "</perl>"]:
             line = "</source>"
         undiv = un_div(line)
@@ -156,7 +158,10 @@ def cleanup_mediawiki(text):
         new.append(line)
     return "\n".join(new), categories
 
-assert cleanup_mediawiki('<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFFFFF">[[Image:Pear.png|left|The Bosc Pear]]</div>') == ('[[Image:Pear.png|left|The Bosc Pear]]', [])
+tmp = '<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFF\
+FFF">[[Image:Pear.png|left|The Bosc Pear]]</div>'
+assert cleanup_mediawiki(tmp) == ('[[Image:Pear.png|left|The Bosc Pear]]', []), cleanup_mediawiki(tmp)
+del tmp
 
 def clean_tag(tag):
     while "}" in tag:
