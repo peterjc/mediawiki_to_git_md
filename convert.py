@@ -192,6 +192,12 @@ def mkdir_recursive(path):
             os.mkdir(p)
     assert os.path.exists(path)
 
+def ignore_by_prefix(title):
+    for prefix in page_prefixes_to_ignore:
+        if title.startswith(prefix):
+            return True
+    return False
+
 def dump_revision(mw_filename, md_filename, text, title):
     # We may have unicode, e.g. character u'\xed' (accented i)
     # Make folder in case have example like 'wiki/BioSQL/Windows.md
@@ -361,6 +367,9 @@ for event, element in e:
                 if title.startswith("File:"):
                     #print("Ignoring revision for %s in favour of upload entry" % title)
                     pass
+                elif ignore_by_prefix(title):
+                    #print("Ignoring revision for %s due to title prefix" % title)
+                    pass
                 elif text is not None:
                     #print("Recording '%s' as of revision %s by %s" % (title, date, username))
                     c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
@@ -395,12 +404,6 @@ def commit_file(title, filename, date, username, contents, comment):
         handle.write(base64.b64decode(contents))
     commit_files([filename], username, date, comment)
 
-def ignore_by_prefix(title):
-    for prefix in page_prefixes_to_ignore:
-        if title.startswith(prefix):
-            return True
-    return False
-
 
 if sys.platform != "linux2":
     #print("=" * 60)
@@ -408,6 +411,7 @@ if sys.platform != "linux2":
     names = dict()
     for title, in c.execute('SELECT DISTINCT title FROM revisions ORDER BY title'):
         if ignore_by_prefix(title):
+            assert False, "Should have already excluded %s?" % title
             pass
         elif title.lower() not in names:
             names[title.lower()] = title
