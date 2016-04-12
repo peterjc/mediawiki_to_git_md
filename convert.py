@@ -70,10 +70,6 @@ c = conn.cursor()
 c.execute("CREATE TABLE revisions "
           "(title text, filename text, date text, username text, content text, comment text)")
 
-def sys_exit(msg, error_level=1):
-    sys.stderr.write(msg.rstrip() + "\n")
-    sys.exit(error_level)
-
 def un_div(text):
     """Remove wrapping <div...>text</div> leaving just text."""
     if text.strip().startswith("<div ") and text.strip().endswith("</div>"):
@@ -266,7 +262,8 @@ def run(cmd_string):
     #print(cmd_string)
     return_code = os.system(cmd_string)
     if return_code:
-        sys_exit("Error %i from: %s" % (return_code, cmd_string), return_code)
+        sys.stderr.write("Error %i from: %s\n" % (return_code, cmd_string))
+        sys.exit(return_code)
 
 def commit_revision(mw_filename, md_filename, username, date, comment):
     assert os.path.isfile(md_filename), md_filename
@@ -393,7 +390,7 @@ for event, element in e:
             assert date is None, date
             title = filename = date = username = text = comment = None
     else:
-        sys_exit("Unexpected event %r with element %r" % (event, element))
+        sys.exit("Unexpected event %r with element %r" % (event, element))
 
 def commit_file(title, filename, date, username, contents, comment):
     # commit an image or other file from its base64 encoded representation
