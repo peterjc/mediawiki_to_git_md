@@ -154,6 +154,8 @@ def cleanup_mediawiki(text):
         # See https://github.com/jgm/pandoc/issues/2849
         if "[[:Category:" in line:
             line = line.replace("[[:Category:", "[[Category%3A")
+        if "[[User:" in line:
+            line = line.replace("[[User:", "[[User%3A")
         new.append(line)
     return "\n".join(new), categories
 
