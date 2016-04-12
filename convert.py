@@ -23,7 +23,7 @@ user_blacklist = "user_blocklist.txt"
 default_email = "anonymous.contributor@example.org"
 base_url = "http://www.open-bio.org/" # Used for images etc; prefix is appended to this!
 base_image_url = base_url + "w/images/" # Used for images
-page_prefixes_to_ignore = ["Help:", "MediaWiki:", "User:", "Talk:", "User talk:"] # Beware spaces vs _
+page_prefixes_to_ignore = ["Help:", "MediaWiki:", "Talk:", "User talk:"] # Beware spaces vs _
 git = "git" # assume on path
 pandoc = "pandoc" # assume on path
 
