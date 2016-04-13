@@ -482,3 +482,6 @@ if missing_users:
     for username in sorted(missing_users):
         print("%i - %s" % (missing_users[username], username))
 
+print("Removing any empty commits...")
+run("%s filter-branch --prune-empty -f HEAD" % git)
+print("Done")
