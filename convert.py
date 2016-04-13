@@ -295,7 +295,7 @@ def commit_files(filenames, username, date, comment):
         author = "%s <%s>" % (username, default_email)
     else:
         # git insists on a name, not just an email address:
-        author = "Anonymous Contributor <%s> % default_email"
+        author = "Anonymous Contributor <%s>" % default_email
     if not comment:
         comment = "No comment"
     # In order to handle quotes etc in the message, rather than -m "%s"
