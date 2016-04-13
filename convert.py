@@ -125,12 +125,19 @@ def cleanup_mediawiki(text):
     for line in text.split("\n"):
         # line is already unicode
         line = line.replace("\xe2\x80\x8e".decode("utf-8"), "")  # LEFT-TO-RIGHT
+        # TODO - Woudl benefit from state tracking (for tag mismatches)
         if line.startswith("<python>"):
             line = ("<source lang=python>\n" + line[8:]).strip()
         elif line.startswith("<perl>"):
             line = ("<source lang=perl>\n" + line[6:]).strip()
-        elif line.rstrip() in ["</python>", "</perl>"]:
+        # Want to support <python>print("Hello world")</python>
+        # where open and closing tags are on the same line:
+        if line.rstrip() in ["</python>", "</perl>"]:
             line = "</source>"
+        elif line.rstrip().endswith("</python>"):
+            line = line.replace("</python>", "\n</source>")
+        elif line.rstrip().endswith("</perl>"):
+            line = line.replace("<perl>", "\n</source>")
         undiv = un_div(line)
         if undiv in ["__TOC__", "__FORCETOC__", "__NOTOC__"]:
             continue
