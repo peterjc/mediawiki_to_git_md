@@ -31,9 +31,10 @@ pandoc = "pandoc" # assume on path
 missing_users = dict()
 
 assert os.path.isdir(".git"), "Expected to be in a Git repository!"
-
-if not os.path.isdir(prefix):
-    os.mkdir(prefix)
+if prefix:
+    assert prefix.endswith("/")
+    if not os.path.isdir(prefix):
+        os.mkdir(prefix)
 
 user_mapping = dict()
 with open(user_table, "r") as handle:
@@ -190,8 +191,12 @@ def make_url(title):
     return os.path.join(prefix, title.replace(" ", "_"))
 
 def make_filename(title, ext):
-    """Spaces to underscore; addsplus prefix and extension given."""
-    return make_url(title) + os.path.extsep + ext
+    """Spaces to underscore, colon to underscore; adds extension given.
+
+    Want to avoid colons in filenames for Windows, fix the URL via
+    the YAML header with a permalink entry.
+    """
+    return make_url(title).replace(":", "_") + os.path.extsep + ext
 
 def mkdir_recursive(path):
     paths = [x for x in os.path.split(path) if x]
@@ -225,6 +230,7 @@ def dump_revision(mw_filename, md_filename, text, title):
             with open(md_filename, "w") as handle:
                 handle.write("---\n")
                 handle.write("title: %s\n" % title)
+                handle.write("permalink: %s\n" % make_url(title))
                 handle.write("redirect_to: /%s\n" % make_url(redirect))
                 handle.write("---\n\n")
                 handle.write("You should automatically be redirected to [%s](/%s)\n"
@@ -255,6 +261,7 @@ def dump_revision(mw_filename, md_filename, text, title):
     with open(md_filename, "w") as handle:
         handle.write("---\n")
         handle.write("title: %s\n" % title)
+        handle.write("permalink: %s\n" % make_url(title))
         if title.startswith("Category:"):
             # This assumes have layout template called tagpage
             # which will insert the tag listing automatically
