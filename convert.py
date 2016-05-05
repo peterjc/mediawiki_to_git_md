@@ -4,6 +4,7 @@ import sys
 import subprocess
 import sqlite3
 import base64
+import gzip
 from xml.etree import cElementTree as ElementTree
 
 if len(sys.argv) == 1:
@@ -59,7 +60,11 @@ with open(user_blacklist, "r") as handle:
     for line in handle:
         blacklist.add(line.strip())
 
-e = ElementTree.iterparse(open(mediawiki_xml_dump), events=('start', 'end'))
+if mediawiki_xml_dump.endswith(".gz"):
+    xml_handle = gzip.open(mediawiki_xml_dump)
+else:
+    xml_handle = open(mediawiki_xml_dump)
+e = ElementTree.iterparse(xml_handle, events=('start', 'end'))
 
 db = mediawiki_xml_dump + ".sqlite"
 if os.path.isfile(db):
@@ -415,6 +420,8 @@ for event, element in e:
             title = filename = date = username = text = comment = None
     else:
         sys.exit("Unexpected event %r with element %r" % (event, element))
+xml_handle.close()
+
 
 def commit_file(title, filename, date, username, contents, comment):
     # commit an image or other file from its base64 encoded representation
