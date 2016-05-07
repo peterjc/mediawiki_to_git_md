@@ -136,19 +136,25 @@ def cleanup_mediawiki(text):
             line = ("<source lang=python>\n" + line[8:]).strip()
         elif line.startswith("<perl>"):
             line = ("<source lang=perl>\n" + line[6:]).strip()
+        elif line.startswith("<sql>"):
+            line = ("<source lang=sql>\n" + line[6:]).strip()
         # Also cope with <python id=example> etc:
         elif line.startswith("<python ") and ">" in line:
             line = ("<source lang=python " + line[8:]).strip()
         elif line.startswith("<perl ") and ">" in line:
-            line = ("<source lang=perl " + line[6:]).strip()
+            line = ("<source lang=sql " + line[6:]).strip()
+        elif line.startswith("<perl ") and ">" in line:
+            line = ("<source lang=sql " + line[5:]).strip()
         # Want to support <python>print("Hello world")</python>
         # where open and closing tags are on the same line:
-        if line.rstrip() in ["</python>", "</perl>"]:
+        if line.rstrip() in ["</python>", "</perl>", "</sql>"]:
             line = "</source>"
         elif line.rstrip().endswith("</python>"):
             line = line.replace("</python>", "\n</source>")
         elif line.rstrip().endswith("</perl>"):
             line = line.replace("<perl>", "\n</source>")
+        elif line.rstrip().endswith("</sql>"):
+            line = line.replace("<sql>", "\n</source>")
         undiv = un_div(line)
         if undiv in ["__TOC__", "__FORCETOC__", "__NOTOC__"]:
             continue
