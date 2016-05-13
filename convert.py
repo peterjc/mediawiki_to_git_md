@@ -198,25 +198,20 @@ def make_cannonical(title):
     return title[0].upper() + title[1:].lower()
 
 def make_url(title):
-    """Spaces to underscore; adds prefix."""
-    return os.path.join(prefix, title.replace(" ", "_"))
+    """Spaces to underscore; adds prefix; adds trailing slash."""
+    return os.path.join(prefix, title.replace(" ", "_") + "/")
 
 def make_filename(title, ext):
-    """Spaces to underscore, colon to underscore; adds extension given.
+    """Spaces/colons/slahses to underscores; adds extension given.
 
     Want to avoid colons in filenames for Windows, fix the URL via
     the YAML header with a permalink entry.
-    """
-    return make_url(title).replace(":", "_") + os.path.extsep + ext
 
-def mkdir_recursive(path):
-    paths = [x for x in os.path.split(path) if x]
-    for i in range(len(paths)):
-        p = os.path.join(*paths[:i+1])
-        #print("*** %r -> %r" % (paths, p))
-        if not os.path.exists(p):
-            os.mkdir(p)
-    assert os.path.exists(path)
+    Likewise want to avoid slashes in filenames as causes problems
+    with automatic links when there are child-folders. Again we
+    get the desired URL via the YAML header permalink entry.
+    """
+    return os.path.join(prefix, title.replace(" ", "_").replace(":", "_").replace("/", "_") + os.path.extsep + ext)
 
 def ignore_by_prefix(title):
     for prefix in page_prefixes_to_ignore:
@@ -226,10 +221,7 @@ def ignore_by_prefix(title):
 
 def dump_revision(mw_filename, md_filename, text, title):
     # We may have unicode, e.g. character u'\xed' (accented i)
-    # Make folder in case have example like 'wiki/BioSQL/Windows.md
-
     folder, local_filename = os.path.split(mw_filename)
-    mkdir_recursive(folder)
     text, categories = cleanup_mediawiki(text)
     with open(mw_filename, "w") as handle:
         handle.write(text.encode("utf8"))
@@ -250,7 +242,6 @@ def dump_revision(mw_filename, md_filename, text, title):
             return True
 
     folder, local_filename = os.path.split(md_filename)
-    mkdir_recursive(folder)
     child = subprocess.Popen([pandoc,
                               "-f", "mediawiki",
                               "-t", "markdown_github-hard_line_breaks",
