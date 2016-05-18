@@ -196,7 +196,6 @@ def cleanup_markdown(text, source_url):
         # How would we change it?
         return text
 
-    print("Need to massage links...")
     # Looking for ...](URL "wikilink")... where the URL should look
     # like a relative link (no http etc), but may not be, e.g.
     # [DAS/1](DAS/1 "wikilink") --> [DAS/1](/wiki/DAS/1 "wikilink")
@@ -204,8 +203,8 @@ def cleanup_markdown(text, source_url):
     for old in p.findall(text):
         if old.startswith(("](http", "](ftp:", "](mailto:")):
             continue
-        new = "](/%s/%s" % (prefix, old[2:])
-        print("Replacing %s --> %s" % (old[1:], new[1:]))
+        new = "](/%s%s" % (prefix, old[2:])
+        #print("Replacing %s --> %s" % (old[1:], new[1:]))
         text = text.replace(old, new)
     return text
 
