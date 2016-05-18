@@ -248,14 +248,15 @@ def ignore_by_prefix(title):
 def dump_revision(mw_filename, md_filename, text, title):
     # We may have unicode, e.g. character u'\xed' (accented i)
     folder, local_filename = os.path.split(mw_filename)
+    original = text
     text, categories = cleanup_mediawiki(text)
-    with open(mw_filename, "w") as handle:
-        handle.write(text.encode("utf8"))
 
     if text.strip().startswith("#REDIRECT [[") and text.strip().endswith("]]"):
         redirect = text.strip()[12:-2]
         if "\n" not in redirect and "]" not in redirect:
             # Maybe I should just have written a regular expression?
+            with open(mw_filename, "w") as handle:
+                handle.write(original.encode("utf8"))
             with open(md_filename, "w") as handle:
                 handle.write("---\n")
                 handle.write("title: %s\n" % title)
@@ -267,6 +268,8 @@ def dump_revision(mw_filename, md_filename, text, title):
             print("Setup redirection %s --> %s" % (title, redirect))
             return True
 
+    with open(mw_filename, "w") as handle:
+        handle.write(text.encode("utf8"))
     folder, local_filename = os.path.split(md_filename)
     child = subprocess.Popen([pandoc,
                               "-f", "mediawiki",
@@ -276,6 +279,11 @@ def dump_revision(mw_filename, md_filename, text, title):
                              stderr=subprocess.PIPE,
                              )
     stdout, stderr = child.communicate()
+    # Now over-write with the original mediawiki to record that in git,
+    with open(mw_filename, "w") as handle:
+        handle.write(original.encode("utf8"))
+
+    # What did pandoc think?
     if stderr or child.returncode:
         print(stdout)
     if stderr:
