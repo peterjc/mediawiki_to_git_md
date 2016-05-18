@@ -129,33 +129,24 @@ def cleanup_mediawiki(text):
     #
     new = []
     categories = []
+    languages = ["python", "perl", "sql", "bash", "ruby", "java", "xml"]
     for line in text.split("\n"):
         # line is already unicode
         line = line.replace("\xe2\x80\x8e".decode("utf-8"), "")  # LEFT-TO-RIGHT
         # TODO - Would benefit from state tracking (for tag mismatches)
-        if line.startswith("<python>"):
-            line = ("<source lang=python>\n" + line[8:]).strip()
-        elif line.startswith("<perl>"):
-            line = ("<source lang=perl>\n" + line[6:]).strip()
-        elif line.startswith("<sql>"):
-            line = ("<source lang=sql>\n" + line[6:]).strip()
-        # Also cope with <python id=example> etc:
-        elif line.startswith("<python ") and ">" in line:
-            line = ("<source lang=python " + line[8:]).strip()
-        elif line.startswith("<perl ") and ">" in line:
-            line = ("<source lang=sql " + line[6:]).strip()
-        elif line.startswith("<perl ") and ">" in line:
-            line = ("<source lang=sql " + line[5:]).strip()
-        # Want to support <python>print("Hello world")</python>
-        # where open and closing tags are on the same line:
-        if line.rstrip() in ["</python>", "</perl>", "</sql>"]:
-            line = "</source>"
-        elif line.rstrip().endswith("</python>"):
-            line = line.replace("</python>", "\n</source>")
-        elif line.rstrip().endswith("</perl>"):
-            line = line.replace("<perl>", "\n</source>")
-        elif line.rstrip().endswith("</sql>"):
-            line = line.replace("<sql>", "\n</source>")
+        for lang in languages:
+            # Easy case <python> etc
+            if line.lower().startswith("<%s>" % lang):
+                line = (("<source lang=%s\n" % lang) + line[len(lang) + 2:]).strip()
+            # Also cope with <python id=example> etc:
+            elif line.startswith("<%s " % lang) and ">" in line:
+                line = (("<source lang=%s " % lang) + line[len(lang) + 2:]).strip()
+            # Want to support <python>print("Hello world")</python>
+            # where open and closing tags are on the same line:
+            if line.rstrip() == "</%s>" % lang:
+                line = "</source>"
+            elif line.rstrip().endswith("</%s>" % lang):
+                line = line.replace("</%s>" % lang, "\n</source>")
         undiv = un_div(line)
         if undiv in ["__TOC__", "__FORCETOC__", "__NOTOC__"]:
             continue
