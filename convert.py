@@ -4,6 +4,7 @@ import sys
 import subprocess
 import sqlite3
 import base64
+import re
 from xml.etree import cElementTree as ElementTree
 
 if len(sys.argv) == 1:
@@ -174,6 +175,41 @@ FFF">[[Image:Pear.png|left|The Bosc Pear]]</div>'
 assert cleanup_mediawiki(tmp) == ('[[Image:Pear.png|left|The Bosc Pear]]', []), cleanup_mediawiki(tmp)
 del tmp
 
+
+def cleanup_markdown(text, source_url):
+    """Post-process markdown from pandoc before saving it.
+
+    Currently only want to tweak internal wikilinks which point at
+    at (or are from) pages using child namespaces with slashes in them.
+    Problem is MediaWiki treats them as absolute (from base path),
+    while Jekyll will treat them as relative (to the current path).
+    """
+    if prefix:
+        assert prefix.endswith("/") and source_url.startswith(prefix)
+        source = source_url[len(prefix):]
+        assert not prefix.startswith("/")
+    else:
+        source = source_url
+    if "/" not in source:
+        return text
+    if not prefix:
+        # How would we change it?
+        return text
+
+    print("Need to massage links...")
+    # Looking for ...](URL "wikilink")... where the URL should look
+    # like a relative link (no http etc), but may not be, e.g.
+    # [DAS/1](DAS/1 "wikilink") --> [DAS/1](/wiki/DAS/1 "wikilink")
+    p = re.compile(']\([A-Z].* "wikilink"\)')
+    for old in p.findall(text):
+        if old.startswith(("](http", "](ftp:", "](mailto:")):
+            continue
+        new = "](/%s/%s" % (prefix, old[2:])
+        print("Replacing %s --> %s" % (old[1:], new[1:]))
+        text = text.replace(old, new)
+    return text
+
+
 def clean_tag(tag):
     while "}" in tag:
         tag = tag[tag.index("}") + 1:]
@@ -270,7 +306,7 @@ def dump_revision(mw_filename, md_filename, text, title):
                 for category in categories:
                     handle.write(" - %s\n" % category)
         handle.write("---\n\n")
-        handle.write(stdout)
+        handle.write(cleanup_markdown(stdout, make_url(title)))
     return True
 
 def run(cmd_string):
