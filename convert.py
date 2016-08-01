@@ -8,15 +8,6 @@ import gzip
 import re
 from xml.etree import cElementTree as ElementTree
 
-if len(sys.argv) == 1:
-    print("Basic Usage: ./convert.py mediawiki.dump")
-    print("")
-    print('White list: ./convert.py mediawiki.dump "Main Page" "File:Example Image.jpg"')
-    sys.exit()
-
-mediawiki_xml_dump = sys.argv[1]  # TODO - proper API
-page_whitelist = sys.argv[2:]
-
 prefix = "wiki/"
 mediawiki_ext = "mediawiki"
 markdown_ext = "md"
@@ -29,6 +20,34 @@ page_prefixes_to_ignore = ["Help:", "MediaWiki:", "Talk:", "User:", "User talk:"
 default_layout = "wiki" # Can also use None; note get tagpage for category listings
 git = "git" # assume on path
 pandoc = "pandoc" # assume on path
+
+
+def check_pandoc():
+    try:
+        child = subprocess.Popen([pandoc, "--version"],
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+    except OSError:
+        sys.exit("Could not find pandoc on $PATH")
+    stdout, stderr = child.communicate()
+    if child.returncode:
+        sys.exit("Error %i from pandoc version check\n" % child.returncode)
+    if not stdout:
+        sys.exit("No output from pandoc version check\n")
+    for line in stdout.split("\n"):
+        if line.startswith("pandoc ") and "." in line:
+            print("Will be using " + line)
+check_pandoc()
+
+
+if len(sys.argv) == 1:
+    print("Basic Usage: ./convert.py mediawiki.dump")
+    print("")
+    print('White list: ./convert.py mediawiki.dump "Main Page" "File:Example Image.jpg"')
+    sys.exit()
+
+mediawiki_xml_dump = sys.argv[1]  # TODO - proper API
+page_whitelist = sys.argv[2:]
 
 missing_users = dict()
 
