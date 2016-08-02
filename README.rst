@@ -1,8 +1,13 @@
 This is a work in progress quick hack, written in Python.
 
-I am interested in migrating content in MediaWiki to Markdown
+It is used to migrate content in MediaWiki to Markdown
 for display on GitHub pages using Jekyll:
 https://help.github.com/articles/using-jekyll-with-pages/
+
+It was used to convert http://biopython.org/ from a MediaWiki site
+that was last archived in March 2016 at
+https://web.archive.org/web/20160315062158/http://biopython.org/wiki/Main_Page
+to a Github Pages repository.
 
 The idea here is to first prepare a MediaWiki XML dump of the
 current wiki contents (including revisions of the current
