@@ -1,7 +1,9 @@
 This is a work in progress quick hack, written in Python.
 
-I am interested in migrating content in MediaWiki to Markdown
-for display on GitHub pages using Jekyll:
+This script migrates content in MediaWiki to Markdown,
+preserving the edit history as git commits, for display
+on GitHub pages using Jekyll:
+
 https://help.github.com/articles/using-jekyll-with-pages/
 
 The idea here is to first prepare a MediaWiki XML dump of the
@@ -41,9 +43,23 @@ markdown, and therefore ideally will not result in a git
 commit.
 
 
+History
+=======
+
+An early version of the script was used for the BioJava
+wiki http://biojava.org which is now hosted at
+https://github.com/biojava/biojava.github.io
+
+A later version of the script (with support for slashes
+in wiki page names) was used for the Biopython wiki
+http://biopython.org which is now hosted at
+https://github.com/biopython/biopython.github.io
+
+
 TODO
 ====
 
+* Start using formal version numbers
 * Cope with unicode in the title / filename, e.g. BioPerl
 * Squash quick series of git commits from single author to
   a single page (with same or no comment)?
