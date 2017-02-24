@@ -278,13 +278,13 @@ def dump_revision(mw_filename, md_filename, text, title):
                 handle.write(original.encode("utf8"))
             with open(md_filename, "w") as handle:
                 handle.write("---\n")
-                handle.write("title: %s\n" % title)
-                handle.write("permalink: %s\n" % make_url(title))
-                handle.write("redirect_to: /%s\n" % make_url(redirect))
+                handle.write("title: %s\n" % title.encode("utf-8"))
+                handle.write("permalink: %s\n" % make_url(title).encode("utf-8"))
+                handle.write("redirect_to: /%s\n" % make_url(redirect).encode("utf-8"))
                 handle.write("---\n\n")
                 handle.write("You should automatically be redirected to [%s](/%s)\n"
-                             % (redirect, make_url(redirect)))
-            print("Setup redirection %s --> %s" % (title, redirect))
+                             % (redirect.encode("utf-8"), make_url(redirect).encode("utf-8")))
+            print("Setup redirection %s --> %s" % (title.encode("utf-8"), redirect.encode("utf-8")))
             return True
 
     with open(mw_filename, "w") as handle:
@@ -315,8 +315,8 @@ def dump_revision(mw_filename, md_filename, text, title):
         return False
     with open(md_filename, "w") as handle:
         handle.write("---\n")
-        handle.write("title: %s\n" % title)
-        handle.write("permalink: %s\n" % make_url(title))
+        handle.write("title: %s\n" % title.encode("utf-8"))
+        handle.write("permalink: %s\n" % make_url(title).encode("utf-8"))
         if title.startswith("Category:"):
             # This assumes have layout template called tagpage
             # which will insert the tag listing automatically
@@ -339,7 +339,7 @@ def dump_revision(mw_filename, md_filename, text, title):
 
 def run(cmd_string):
     #print(cmd_string)
-    return_code = os.system(cmd_string)
+    return_code = os.system(cmd_string.encode("utf-8"))
     if return_code:
         sys.stderr.write("Error %i from: %s\n" % (return_code, cmd_string))
         sys.exit(return_code)
