@@ -97,7 +97,7 @@ and parse it with::
 
 Then run the script from this repository to pull out the user names::
 
-    $ ../mediawiki_to_git_md/extract_blocklist.py block_list.html
+    $ ../mediawiki_to_git_md/extract_blocklist.py blocklist.html
     Parse saved HTML file of wiki/Special:BlockList into simple text file
     Extracted 50 users from 'blocklist.html' into 'user_blocklist.txt'
 
