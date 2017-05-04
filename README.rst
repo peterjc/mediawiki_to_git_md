@@ -119,7 +119,7 @@ MediWiki Conversion
 ===================
 
 Now run the conversion in your GitHub Pages repository, where git is
-already on the right branch and ready for new commits to be made:
+already on the right branch and ready for new commits to be made::
 
     $ ../mediawiki_to_git_md/convert.py mediawiki_dump.xml 
     ============================================================
