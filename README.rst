@@ -148,3 +148,8 @@ However, ``Category:XXX`` pages are instead mapped to layout ``tagpage``, and
 given tag ``XXX``. This assumes you have defined ``_layouts/tagpage.html``
 which will add the automatic listing of all pages with the tag ``XXX``. We use
 tags since Jekyll does not allow multiple categories per page like MediaWiki.
+
+See `Biopython's wiki template <https://github.com/biopython/biopython.github.io/blob/master/_layouts/wiki.html>`_
+and `tagpage template <https://github.com/biopython/biopython.github.io/blob/master/_layouts/tagpage.html>`_
+for examples. Note the later includes automatically generated links to all
+the pages with that tag.
