@@ -141,10 +141,10 @@ Jekyll Setup
 ============
 
 By default most converted pages are assigned the Jekyll layout ``wiki`` which
-assumes you have defined ``_layout/wiki.html`` as a template. This can be
+assumes you have defined ``_layouts/wiki.html`` as a template. This can be
 changed, e.g, to None to use the default layout.
 
 However, ``Category:XXX`` pages are instead mapped to layout ``tagpage``, and
-given tag ``XXX``. This assumes you have defined ``_layout/tagpage.html``
+given tag ``XXX``. This assumes you have defined ``_layouts/tagpage.html``
 which will add the automatic listing of all pages with the tag ``XXX``. We use
 tags since Jekyll does not allow multiple categories per page like MediaWiki.
