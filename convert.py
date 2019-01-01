@@ -26,7 +26,8 @@ def check_pandoc():
     try:
         child = subprocess.Popen([pandoc, "--version"],
                                  stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
+                                 stderr=subprocess.PIPE,
+                                 universal_newlines=True)
     except OSError:
         sys.exit("Could not find pandoc on $PATH")
     stdout, stderr = child.communicate()
@@ -151,7 +152,7 @@ def cleanup_mediawiki(text):
     languages = ["python", "perl", "sql", "bash", "ruby", "java", "xml"]
     for line in text.split("\n"):
         # line is already unicode
-        line = line.replace("\xe2\x80\x8e".decode("utf-8"), "")  # LEFT-TO-RIGHT
+        line = line.replace("\xe2\x80\x8e", "")  # LEFT-TO-RIGHT
         # TODO - Would benefit from state tracking (for tag mismatches)
         for lang in languages:
             # Easy case <python> etc
@@ -275,7 +276,7 @@ def dump_revision(mw_filename, md_filename, text, title):
         if "\n" not in redirect and "]" not in redirect:
             # Maybe I should just have written a regular expression?
             with open(mw_filename, "w") as handle:
-                handle.write(original.encode("utf8"))
+                handle.write(original)
             with open(md_filename, "w") as handle:
                 handle.write("---\n")
                 handle.write("title: %s\n" % title.encode("utf-8"))
@@ -288,7 +289,7 @@ def dump_revision(mw_filename, md_filename, text, title):
             return True
 
     with open(mw_filename, "w") as handle:
-        handle.write(text.encode("utf8"))
+        handle.write(text)
     folder, local_filename = os.path.split(md_filename)
     child = subprocess.Popen([pandoc,
                               "-f", "mediawiki",
@@ -296,11 +297,11 @@ def dump_revision(mw_filename, md_filename, text, title):
                               mw_filename],
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
-                             )
+                             universal_newlines=True)
     stdout, stderr = child.communicate()
     # Now over-write with the original mediawiki to record that in git,
     with open(mw_filename, "w") as handle:
-        handle.write(original.encode("utf8"))
+        handle.write(original)
 
     # What did pandoc think?
     if stderr or child.returncode:
@@ -384,9 +385,9 @@ def commit_files(filenames, username, date, comment):
     child = subprocess.Popen(cmd,
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE
-                             )
-    child.stdin.write(comment.encode("utf8"))
+                             stderr=subprocess.PIPE,
+                             universal_newlines=True)
+    child.stdin.write(comment)
     stdout, stderr = child.communicate()
     if child.returncode or stderr:
         sys.stderr.write(stdout)
