@@ -344,6 +344,15 @@ def run(cmd_string):
         sys.stderr.write("Error %i from: %s\n" % (return_code, cmd_string))
         sys.exit(return_code)
 
+def runsafe(cmd_array):
+    args = []
+    for el in cmd_array:
+        args.append(el.encode("utf-8"))
+    return_code = subprocess.call(args)
+    if return_code:
+        sys.stderr.write("Error %i from: %s\n" % (return_code, ' '.join(cmd_array)))
+        sys.exit(return_code)
+
 def commit_revision(mw_filename, md_filename, username, date, comment):
     assert os.path.isfile(md_filename), md_filename
     assert os.path.isfile(mw_filename), mw_filename
@@ -355,8 +364,8 @@ def commit_files(filenames, username, date, comment):
     assert filenames, "Nothing to commit: %r" % filenames
     for f in filenames:
         assert os.path.isfile(f), f
-    cmd = '"%s" add "%s"' % (git, '" "'.join(filenames))
-    run(cmd)
+    cmd = [ git, 'add' ] + filenames
+    runsafe(cmd)
     # TODO - how to detect and skip empty commit?
     if username in user_mapping:
         author = user_mapping[username]
