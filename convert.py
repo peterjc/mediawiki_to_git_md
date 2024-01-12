@@ -16,12 +16,20 @@ markdown_ext = "md"
 user_table = "usernames.txt"
 user_blacklist = "user_blocklist.txt"
 default_email = "anonymous.contributor@example.org"
-base_url = "http://www.open-bio.org/" # Used for images etc; prefix is appended to this!
-base_image_url = base_url + "w/images/" # Used for images
-page_prefixes_to_ignore = ["Help:", "MediaWiki:", "Talk:", "User:", "User talk:"] # Beware spaces vs _
-default_layout = "wiki" # Can also use None; note get tagpage for category listings
-git = "git" # assume on path
-pandoc = "pandoc" # assume on path
+base_url = (
+    "http://www.open-bio.org/"  # Used for images etc; prefix is appended to this!
+)
+base_image_url = base_url + "w/images/"  # Used for images
+page_prefixes_to_ignore = [
+    "Help:",
+    "MediaWiki:",
+    "Talk:",
+    "User:",
+    "User talk:",
+]  # Beware spaces vs _
+default_layout = "wiki"  # Can also use None; note get tagpage for category listings
+git = "git"  # assume on path
+pandoc = "pandoc"  # assume on path
 
 # Internal settings (user should not touch):
 
@@ -33,9 +41,9 @@ if "-v" in sys.argv or "--version" in sys.argv:
 
 def check_pandoc():
     try:
-        child = subprocess.Popen([pandoc, "--version"],
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
+        child = subprocess.Popen(
+            [pandoc, "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
     except OSError:
         sys.exit("Could not find pandoc on $PATH")
     stdout, stderr = child.communicate()
@@ -46,6 +54,8 @@ def check_pandoc():
     for line in stdout.split("\n"):
         if line.startswith("pandoc ") and "." in line:
             print("Will be using " + line)
+
+
 check_pandoc()
 
 
@@ -54,7 +64,9 @@ if len(sys.argv) == 1:
     print("")
     print("Basic Usage: ./convert.py mediawiki.dump")
     print("")
-    print('White list: ./convert.py mediawiki.dump "Main Page" "File:Example Image.jpg"')
+    print(
+        'White list: ./convert.py mediawiki.dump "Main Page" "File:Example Image.jpg"'
+    )
     sys.exit()
 
 mediawiki_xml_dump = sys.argv[1]  # TODO - proper API
@@ -81,7 +93,10 @@ with open(user_table, "r") as handle:
         # TODO - expand this with a regular expression or something
         if " <" not in github or "@" not in github or ">" not in github:
             sys.stderr.write("Invalid entry for %r: %r\n" % (username, github))
-            sys.stderr.write("Second column in %s should use the format: name <email>, e.g.\n" % user_table)
+            sys.stderr.write(
+                "Second column in %s should use the format: name <email>, e.g.\n"
+                % user_table
+            )
             sys.stderr.write("A.N. Other <a.n.other@example.org>\n")
             sys.exit(1)
         user_mapping[username] = github
@@ -95,7 +110,7 @@ if mediawiki_xml_dump.endswith(".gz"):
     xml_handle = gzip.open(mediawiki_xml_dump)
 else:
     xml_handle = open(mediawiki_xml_dump)
-e = ElementTree.iterparse(xml_handle, events=('start', 'end'))
+e = ElementTree.iterparse(xml_handle, events=("start", "end"))
 
 db = mediawiki_xml_dump + ".sqlite"
 if os.path.isfile(db):
@@ -105,20 +120,25 @@ c = conn.cursor()
 # Going to use this same table for BOTH plain text revisions to pages
 # AND for base64 encoded uploads for file attachments, because want
 # to sort both by date and turn each into a commit.
-c.execute("CREATE TABLE revisions "
-          "(title text, filename text, date text, username text, content text, comment text)")
+c.execute(
+    "CREATE TABLE revisions "
+    "(title text, filename text, date text, username text, content text, comment text)"
+)
+
 
 def un_div(text):
     """Remove wrapping <div...>text</div> leaving just text."""
     if text.strip().startswith("<div ") and text.strip().endswith("</div>"):
         text = text.strip()[:-6]
-        text = text[text.index(">") + 1:].strip()
+        text = text[text.index(">") + 1 :].strip()
     return text
 
+
 tmp = '<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFFFFF">[[Image:Pear.png|left|The Bosc Pear]]</div>'
-#print(un_div(tmp))
-assert un_div(tmp) == '[[Image:Pear.png|left|The Bosc Pear]]', un_div(tmp)
+# print(un_div(tmp))
+assert un_div(tmp) == "[[Image:Pear.png|left|The Bosc Pear]]", un_div(tmp)
 del tmp
+
 
 def cleanup_mediawiki(text):
     """Modify mediawiki markup to make it pandoc ready.
@@ -167,10 +187,10 @@ def cleanup_mediawiki(text):
         for lang in languages:
             # Easy case <python> etc
             if line.lower().startswith("<%s>" % lang):
-                line = (("<source lang=%s\n" % lang) + line[len(lang) + 2:]).strip()
+                line = (("<source lang=%s\n" % lang) + line[len(lang) + 2 :]).strip()
             # Also cope with <python id=example> etc:
             elif line.startswith("<%s " % lang) and ">" in line:
-                line = (("<source lang=%s " % lang) + line[len(lang) + 2:]).strip()
+                line = (("<source lang=%s " % lang) + line[len(lang) + 2 :]).strip()
             # Want to support <python>print("Hello world")</python>
             # where open and closing tags are on the same line:
             if line.rstrip() == "</%s>" % lang:
@@ -186,8 +206,8 @@ def cleanup_mediawiki(text):
             line = undiv
         # Look for any category tag, usually done as a single line:
         if "[[Category:" in line:
-            tag = line[line.index("[[Category:") + 11:]
-            tag = tag[:tag.index("]]")]
+            tag = line[line.index("[[Category:") + 11 :]
+            tag = tag[: tag.index("]]")]
             assert ("[[Category:%s]]" % tag) in line, "Infered %r from %s" % (tag, line)
             categories.append(tag)
             line = line.replace("[[Category:%s]]" % tag, "").strip()
@@ -202,9 +222,13 @@ def cleanup_mediawiki(text):
         new.append(line)
     return "\n".join(new), categories
 
+
 tmp = '<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFF\
 FFF">[[Image:Pear.png|left|The Bosc Pear]]</div>'
-assert cleanup_mediawiki(tmp) == ('[[Image:Pear.png|left|The Bosc Pear]]', []), cleanup_mediawiki(tmp)
+assert cleanup_mediawiki(tmp) == (
+    "[[Image:Pear.png|left|The Bosc Pear]]",
+    [],
+), cleanup_mediawiki(tmp)
 del tmp
 
 
@@ -218,7 +242,7 @@ def cleanup_markdown(text, source_url):
     """
     if prefix:
         assert prefix.endswith("/") and source_url.startswith(prefix)
-        source = source_url[len(prefix):]
+        source = source_url[len(prefix) :]
         assert not prefix.startswith("/")
     else:
         source = source_url
@@ -236,14 +260,14 @@ def cleanup_markdown(text, source_url):
         if old.startswith(("](http", "](ftp:", "](mailto:")):
             continue
         new = "](/%s%s" % (prefix, old[2:])
-        #print("Replacing %s --> %s" % (old[1:], new[1:]))
+        # print("Replacing %s --> %s" % (old[1:], new[1:]))
         text = text.replace(old, new)
     return text
 
 
 def clean_tag(tag):
     while "}" in tag:
-        tag = tag[tag.index("}") + 1:]
+        tag = tag[tag.index("}") + 1 :]
     return tag
 
 
@@ -253,9 +277,11 @@ def make_cannonical(title):
     title = title.replace(" ", "_")
     return title[0].upper() + title[1:].lower()
 
+
 def make_url(title):
     """Spaces to underscore; adds prefix; adds trailing slash."""
     return os.path.join(prefix, title.replace(" ", "_") + "/")
+
 
 def make_filename(title, ext):
     """Spaces/colons/slahses to underscores; adds extension given.
@@ -267,13 +293,20 @@ def make_filename(title, ext):
     with automatic links when there are child-folders. Again we
     get the desired URL via the YAML header permalink entry.
     """
-    return os.path.join(prefix, title.replace(" ", "_").replace(":", "_").replace("/", "_") + os.path.extsep + ext)
+    return os.path.join(
+        prefix,
+        title.replace(" ", "_").replace(":", "_").replace("/", "_")
+        + os.path.extsep
+        + ext,
+    )
+
 
 def ignore_by_prefix(title):
     for prefix in page_prefixes_to_ignore:
         if title.startswith(prefix):
             return True
     return False
+
 
 def dump_revision(mw_filename, md_filename, text, title):
     # We may have unicode, e.g. character u'\xed' (accented i)
@@ -293,21 +326,31 @@ def dump_revision(mw_filename, md_filename, text, title):
                 handle.write("permalink: %s\n" % make_url(title).encode("utf-8"))
                 handle.write("redirect_to: /%s\n" % make_url(redirect).encode("utf-8"))
                 handle.write("---\n\n")
-                handle.write("You should automatically be redirected to [%s](/%s)\n"
-                             % (redirect.encode("utf-8"), make_url(redirect).encode("utf-8")))
-            print("Setup redirection %s --> %s" % (title.encode("utf-8"), redirect.encode("utf-8")))
+                handle.write(
+                    "You should automatically be redirected to [%s](/%s)\n"
+                    % (redirect.encode("utf-8"), make_url(redirect).encode("utf-8"))
+                )
+            print(
+                "Setup redirection %s --> %s"
+                % (title.encode("utf-8"), redirect.encode("utf-8"))
+            )
             return True
 
     with open(mw_filename, "w") as handle:
         handle.write(text.encode("utf8"))
     folder, local_filename = os.path.split(md_filename)
-    child = subprocess.Popen([pandoc,
-                              "-f", "mediawiki",
-                              "-t", "markdown_github-hard_line_breaks",
-                              mw_filename],
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             )
+    child = subprocess.Popen(
+        [
+            pandoc,
+            "-f",
+            "mediawiki",
+            "-t",
+            "markdown_github-hard_line_breaks",
+            mw_filename,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
     stdout, stderr = child.communicate()
     # Now over-write with the original mediawiki to record that in git,
     with open(mw_filename, "w") as handle:
@@ -348,12 +391,14 @@ def dump_revision(mw_filename, md_filename, text, title):
         handle.write(cleanup_markdown(stdout, make_url(title)))
     return True
 
+
 def run(cmd_string):
-    #print(cmd_string)
+    # print(cmd_string)
     return_code = os.system(cmd_string.encode("utf-8"))
     if return_code:
         sys.stderr.write("Error %i from: %s\n" % (return_code, cmd_string))
         sys.exit(return_code)
+
 
 def runsafe(cmd_array):
     args = []
@@ -361,8 +406,9 @@ def runsafe(cmd_array):
         args.append(el.encode("utf-8"))
     return_code = subprocess.call(args)
     if return_code:
-        sys.stderr.write("Error %i from: %s\n" % (return_code, ' '.join(cmd_array)))
+        sys.stderr.write("Error %i from: %s\n" % (return_code, " ".join(cmd_array)))
         sys.exit(return_code)
+
 
 def commit_revision(mw_filename, md_filename, username, date, comment):
     assert os.path.isfile(md_filename), md_filename
@@ -371,11 +417,12 @@ def commit_revision(mw_filename, md_filename, username, date, comment):
         comment = "Change to wiki page"
     commit_files([md_filename, mw_filename], username, date, comment)
 
+
 def commit_files(filenames, username, date, comment):
     assert filenames, "Nothing to commit: %r" % filenames
     for f in filenames:
         assert os.path.isfile(f), f
-    cmd = [ git, 'add' ] + filenames
+    cmd = [git, "add"] + filenames
     runsafe(cmd)
     # TODO - how to detect and skip empty commit?
     if username in user_mapping:
@@ -396,16 +443,14 @@ def commit_files(filenames, username, date, comment):
     # using the -F option and piping to stdin.
     # cmd = '"%s" commit "%s" --date "%s" --author "%s" -m "%s" --allow-empty' \
     #       % (git, filename, date, author, comment)
-    cmd = [git, 'commit'] + filenames + [
-                              '--date', date,
-                              '--author', author,
-                              '-F', '-',
-                              '--allow-empty']
-    child = subprocess.Popen(cmd,
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE
-                             )
+    cmd = (
+        [git, "commit"]
+        + filenames
+        + ["--date", date, "--author", author, "-F", "-", "--allow-empty"]
+    )
+    child = subprocess.Popen(
+        cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     child.stdin.write(comment.encode("utf8"))
     stdout, stderr = child.communicate()
     if child.returncode or stderr:
@@ -462,15 +507,17 @@ for event, element in e:
                 comment = ""
             if username not in blacklist:
                 if title.startswith("File:"):
-                    #print("Ignoring revision for %s in favour of upload entry" % title)
+                    # print("Ignoring revision for %s in favour of upload entry" % title)
                     pass
                 elif ignore_by_prefix(title):
-                    #print("Ignoring revision for %s due to title prefix" % title)
+                    # print("Ignoring revision for %s due to title prefix" % title)
                     pass
                 elif text is not None:
-                    #print("Recording '%s' as of revision %s by %s" % (title, date, username))
-                    c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
-                              (title, filename, date, username, text, comment))
+                    # print("Recording '%s' as of revision %s by %s" % (title, date, username))
+                    c.execute(
+                        "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
+                        (title, filename, date, username, text, comment),
+                    )
             filename = date = username = text = comment = None
         elif tag == "upload":
             assert title.startswith("File:")
@@ -481,9 +528,11 @@ for event, element in e:
                 comment = ""
             if username not in blacklist:
                 if text is not None or title.startswith("File:"):
-                    #print("Recording '%s' as of upload %s by %s" % (title, date, username))
-                    c.execute("INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
-                              (title, filename, date, username, text, comment))
+                    # print("Recording '%s' as of upload %s by %s" % (title, date, username))
+                    c.execute(
+                        "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
+                        (title, filename, date, username, text, comment),
+                    )
             filename = date = username = text = comment = None
         elif tag == "page":
             assert date is None, date
@@ -497,7 +546,9 @@ def commit_file(title, filename, date, username, contents, comment):
     # commit an image or other file from its base64 encoded representation
     assert title.startswith("File:")
     if not filename:
-        filename = os.path.join(prefix, make_cannonical(title[5:]))  # should already have extension
+        filename = os.path.join(
+            prefix, make_cannonical(title[5:])
+        )  # should already have extension
     print("Committing %s as of upload %s by %s" % (filename, date, username))
     with open(filename, "wb") as handle:
         handle.write(base64.b64decode(contents))
@@ -505,10 +556,10 @@ def commit_file(title, filename, date, username, contents, comment):
 
 
 if sys.platform != "linux2":
-    #print("=" * 60)
-    #print("Checking for potential name clashes")
+    # print("=" * 60)
+    # print("Checking for potential name clashes")
     names = dict()
-    for title, in c.execute('SELECT DISTINCT title FROM revisions ORDER BY title'):
+    for (title,) in c.execute("SELECT DISTINCT title FROM revisions ORDER BY title"):
         if ignore_by_prefix(title):
             assert False, "Should have already excluded %s?" % title
             pass
@@ -519,12 +570,16 @@ if sys.platform != "linux2":
                 print("WARNING: Multiple case variants exist, e.g.")
                 print(" - " + title)
                 print(" - " + names[title.lower()])
-                print("If your file system cannot support such filenames at the same time")
+                print(
+                    "If your file system cannot support such filenames at the same time"
+                )
                 print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
                 break
 print("=" * 60)
 print("Sorting changes by revision date...")
-for title, filename, date, username, text, comment in c.execute('SELECT * FROM revisions ORDER BY date, title'):
+for title, filename, date, username, text, comment in c.execute(
+    "SELECT * FROM revisions ORDER BY date, title"
+):
     if filename:
         filename = os.path.join(prefix, filename)
     if text is None:

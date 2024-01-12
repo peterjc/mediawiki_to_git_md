@@ -12,9 +12,9 @@ with open(blocklist_html) as input_handle:
         for line in input_handle:
             if '<td class="TablePager_col_ipb_target">' not in line:
                 continue
-            line = line[line.index('<td class="TablePager_col_ipb_target">') + 38:]
-            line = line[:line.index('</a>')]
-            line = line[line.index('>') + 1:]
+            line = line[line.index('<td class="TablePager_col_ipb_target">') + 38 :]
+            line = line[: line.index("</a>")]
+            line = line[line.index(">") + 1 :]
             # TODO - unescape &amp; if present?
             output_handle.write("%s\n" % line)
             count += 1
