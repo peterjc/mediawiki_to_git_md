@@ -535,6 +535,7 @@ for event, element in e:
                     revision_count += 1
                     if revision_count % 10000 == 0:
                         sys.stderr.write(f"DEBUG: {revision_count} revisions so far\n")
+                        conn.commit()
                     if debug and revision_count > 500:
                         sys.stderr.write("DEBUG: That's enough for testing now!\n")
                         break
@@ -561,6 +562,7 @@ for event, element in e:
         sys.exit("Unexpected event %r with element %r" % (event, element))
 xml_handle.close()
 print("Finished parsing XML and saved revisions by page.")
+conn.commit()
 
 
 def commit_file(title, filename, date, username, contents, comment):
