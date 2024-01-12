@@ -42,7 +42,10 @@ if "-v" in sys.argv or "--version" in sys.argv:
 def check_pandoc():
     try:
         child = subprocess.Popen(
-            [pandoc, "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            [pandoc, "--version"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
     except OSError:
         sys.exit("Could not find pandoc on $PATH")
