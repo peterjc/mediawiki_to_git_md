@@ -4,7 +4,6 @@ import sys
 import subprocess
 import sqlite3
 import base64
-import gzip
 import re
 from xml.etree import cElementTree as ElementTree
 
@@ -116,7 +115,11 @@ if mediawiki_xml_dump in ["-", "/dev/stdin"]:
     xml_handle = open("/dev/stdin", "rb")
     db = "stdin.sqlite"
 elif mediawiki_xml_dump.endswith(".gz"):
+    import gzip
     xml_handle = gzip.open(mediawiki_xml_dump, "rb")
+elif mediawiki_xml_dump.endswith(".bz2"):
+    import bz2
+    xml_handle = bz2.open(mediawiki_xml_dump, "rb")
 else:
     xml_handle = open(mediawiki_xml_dump, "rb")
 e = ElementTree.iterparse(xml_handle, events=("start", "end"))
