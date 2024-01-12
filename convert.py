@@ -8,6 +8,8 @@ import gzip
 import re
 from xml.etree import cElementTree as ElementTree
 
+# User configurable bits (ought to be command line options?):
+
 prefix = "wiki/"
 mediawiki_ext = "mediawiki"
 markdown_ext = "md"
@@ -21,6 +23,13 @@ default_layout = "wiki" # Can also use None; note get tagpage for category listi
 git = "git" # assume on path
 pandoc = "pandoc" # assume on path
 
+# Internal settings (user should not touch):
+
+__version__ = "1.0.0"
+
+if "-v" in sys.argv or "--version" in sys.argv:
+    print("This is mediawiki_to_git_md version " + __version__)
+    sys.exit(0)
 
 def check_pandoc():
     try:
@@ -41,6 +50,8 @@ check_pandoc()
 
 
 if len(sys.argv) == 1:
+    print("This is mediawiki_to_git_md version " + __version__)
+    print("")
     print("Basic Usage: ./convert.py mediawiki.dump")
     print("")
     print('White list: ./convert.py mediawiki.dump "Main Page" "File:Example Image.jpg"')
