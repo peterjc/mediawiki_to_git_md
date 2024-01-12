@@ -10,6 +10,8 @@ from xml.etree import cElementTree as ElementTree
 
 # User configurable bits (ought to be command line options?):
 
+debug = False
+
 prefix = "wiki/"
 mediawiki_ext = "mediawiki"
 markdown_ext = "md"
@@ -33,7 +35,7 @@ pandoc = "pandoc"  # assume on path
 
 # Internal settings (user should not touch):
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 if "-v" in sys.argv or "--version" in sys.argv:
     print("This is mediawiki_to_git_md version " + __version__)
@@ -109,13 +111,16 @@ with open(user_blacklist, "r") as handle:
     for line in handle:
         blacklist.add(line.strip())
 
-if mediawiki_xml_dump.endswith(".gz"):
-    xml_handle = gzip.open(mediawiki_xml_dump)
+db = mediawiki_xml_dump + ".sqlite"
+if mediawiki_xml_dump in ["-", "/dev/stdin"]:
+    xml_handle = open("/dev/stdin", "rb")
+    db = "stdin.sqlite"
+elif mediawiki_xml_dump.endswith(".gz"):
+    xml_handle = gzip.open(mediawiki_xml_dump, "rb")
 else:
-    xml_handle = open(mediawiki_xml_dump)
+    xml_handle = open(mediawiki_xml_dump, "rb")
 e = ElementTree.iterparse(xml_handle, events=("start", "end"))
 
-db = mediawiki_xml_dump + ".sqlite"
 if os.path.isfile(db):
     os.remove(db)
 conn = sqlite3.connect(db)
@@ -185,7 +190,7 @@ def cleanup_mediawiki(text):
     languages = ["python", "perl", "sql", "bash", "ruby", "java", "xml"]
     for line in text.split("\n"):
         # line is already unicode
-        line = line.replace("\xe2\x80\x8e".decode("utf-8"), "")  # LEFT-TO-RIGHT
+        # TODO - line = line.replace("\xe2\x80\x8e".decode("utf-8"), "")  # LEFT-TO-RIGHT
         # TODO - Would benefit from state tracking (for tag mismatches)
         for lang in languages:
             # Easy case <python> etc
@@ -516,7 +521,8 @@ for event, element in e:
                     # print("Ignoring revision for %s due to title prefix" % title)
                     pass
                 elif text is not None:
-                    # print("Recording '%s' as of revision %s by %s" % (title, date, username))
+                    # if debug:
+                    #     sys.stderr.write(f"Recording '{title}' as of {date} by {username}\n")
                     c.execute(
                         "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
                         (title, filename, date, username, text, comment),
@@ -543,6 +549,7 @@ for event, element in e:
     else:
         sys.exit("Unexpected event %r with element %r" % (event, element))
 xml_handle.close()
+print("Finished parsing XML and saved revisions by page.")
 
 
 def commit_file(title, filename, date, username, contents, comment):
