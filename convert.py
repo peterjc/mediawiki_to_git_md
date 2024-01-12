@@ -327,25 +327,24 @@ def dump_revision(mw_filename, md_filename, text, title):
         if "\n" not in redirect and "]" not in redirect:
             # Maybe I should just have written a regular expression?
             with open(mw_filename, "w") as handle:
-                handle.write(original.encode("utf8"))
+                handle.write(original)
             with open(md_filename, "w") as handle:
                 handle.write("---\n")
-                handle.write("title: %s\n" % title.encode("utf-8"))
-                handle.write("permalink: %s\n" % make_url(title).encode("utf-8"))
-                handle.write("redirect_to: /%s\n" % make_url(redirect).encode("utf-8"))
+                handle.write("title: %s\n" % title)
+                handle.write("permalink: %s\n" % make_url(title))
+                handle.write("redirect_to: /%s\n" % make_url(redirect))
                 handle.write("---\n\n")
                 handle.write(
                     "You should automatically be redirected to [%s](/%s)\n"
-                    % (redirect.encode("utf-8"), make_url(redirect).encode("utf-8"))
+                    % (redirect, make_url(redirect))
                 )
             print(
-                "Setup redirection %s --> %s"
-                % (title.encode("utf-8"), redirect.encode("utf-8"))
+                f"Setup redirection {title} --> {redirect}"
             )
             return True
 
     with open(mw_filename, "w") as handle:
-        handle.write(text.encode("utf8"))
+        handle.write(text)
     folder, local_filename = os.path.split(md_filename)
     child = subprocess.Popen(
         [
@@ -353,16 +352,18 @@ def dump_revision(mw_filename, md_filename, text, title):
             "-f",
             "mediawiki",
             "-t",
-            "markdown_github-hard_line_breaks",
+            # "markdown_github-hard_line_breaks",
+            "gfm-hard_line_breaks",
             mw_filename,
         ],
+        text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
     stdout, stderr = child.communicate()
     # Now over-write with the original mediawiki to record that in git,
     with open(mw_filename, "w") as handle:
-        handle.write(original.encode("utf8"))
+        handle.write(original)
 
     # What did pandoc think?
     if stderr or child.returncode:
@@ -377,8 +378,8 @@ def dump_revision(mw_filename, md_filename, text, title):
         return False
     with open(md_filename, "w") as handle:
         handle.write("---\n")
-        handle.write("title: %s\n" % title.encode("utf-8"))
-        handle.write("permalink: %s\n" % make_url(title).encode("utf-8"))
+        handle.write("title: %s\n" % title)
+        handle.write("permalink: %s\n" % make_url(title))
         if title.startswith("Category:"):
             # This assumes have layout template called tagpage
             # which will insert the tag listing automatically
@@ -462,9 +463,9 @@ def commit_files(filenames, username, date, comment):
     child.stdin.write(comment.encode("utf8"))
     stdout, stderr = child.communicate()
     if child.returncode or stderr:
-        sys.stderr.write(stdout)
+        sys.stderr.write(stdout.decode("utf8"))
     if stderr:
-        sys.stderr.write(stderr)
+        sys.stderr.write(stderr.decode("utf8"))
     if child.returncode:
         sys.stderr.write("Return code %i from git commit\n" % child.returncode)
         sys.stderr.write("Popen(%r, ...)\n" % cmd)
@@ -480,6 +481,7 @@ date = None
 comment = None
 username = None
 text = None
+revision_count = 0
 for event, element in e:
     tag = clean_tag(element.tag)
     if event == "start":
@@ -527,6 +529,12 @@ for event, element in e:
                         "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
                         (title, filename, date, username, text, comment),
                     )
+                    revision_count += 1
+                    if revision_count % 1000 == 0:
+                        sys.stderr.write(f"DEBUG: {revision_count} revisions so far\n")
+                    if debug and revision_count > 500:
+                        sys.stderr.write("DEBUG: That's enough for testing now!\n")
+                        break
             filename = date = username = text = comment = None
         elif tag == "upload":
             assert title.startswith("File:")
