@@ -533,7 +533,7 @@ for event, element in e:
                         (title, filename, date, username, text, comment),
                     )
                     revision_count += 1
-                    if revision_count % 1000 == 0:
+                    if revision_count % 10000 == 0:
                         sys.stderr.write(f"DEBUG: {revision_count} revisions so far\n")
                     if debug and revision_count > 500:
                         sys.stderr.write("DEBUG: That's enough for testing now!\n")
