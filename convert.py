@@ -597,7 +597,7 @@ if sys.platform != "linux2":
                     "If your file system cannot support such filenames at the same time"
                 )
                 print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
-                break
+                sys.exit(1)  # needs a --force option or something?
 print("=" * 60)
 print("Sorting changes by revision date...")
 for title, filename, date, username, text, comment in c.execute(
