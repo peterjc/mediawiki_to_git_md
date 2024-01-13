@@ -133,33 +133,6 @@ else:
     xml_handle = open(mediawiki_xml_dump, "rb")
 e = ElementTree.iterparse(xml_handle, events=("start", "end"))
 
-if os.path.isfile(db):
-    os.remove(db)
-assert db != db.upper()
-if os.path.isfile(db.upper()):
-    os.remove(db.upper())
-
-conn = sqlite3.connect(db)
-c = conn.cursor()
-# Going to use this same table for BOTH plain text revisions to pages
-# AND for base64 encoded uploads for file attachments, because want
-# to sort both by date and turn each into a commit.
-c.execute(
-    "CREATE TABLE revisions "
-    "(title text, filename text, date text, username text, content text, comment text)"
-)
-
-CASE_SENSITIVE = False
-try:
-    os.lstat(db.upper())
-except IOError as e:
-    import errno
-
-    if e.errno == errno.ENOENT:
-        CASE_SENSITIVE = True
-if not CASE_SENSITIVE:
-    sys.stderr.write("WARNING: File system is case insensitive - a potential issue.\n")
-
 
 def un_div(text):
     """Remove wrapping <div...>text</div> leaving just text."""
@@ -497,6 +470,28 @@ def commit_files(filenames, username, date, comment):
         sys.exit(child.returncode)
 
 
+if db != "stdin.sqlite" and os.path.isfile(db) and os.stat(mediawiki_xml_dump).st_mtime < os.stat(db).st_mtime:
+    sys.stderr.write(f"Reusing SQLite file {db}\n")
+    conn = sqlite3.connect(db)
+    c = conn.cursor()
+
+if os.path.isfile(db):
+    os.remove(db)
+assert db != db.upper()
+if os.path.isfile(db.upper()):
+    os.remove(db.upper())
+
+conn = sqlite3.connect(db)
+c = conn.cursor()
+# Going to use this same table for BOTH plain text revisions to pages
+# AND for base64 encoded uploads for file attachments, because want
+# to sort both by date and turn each into a commit.
+c.execute(
+    "CREATE TABLE revisions "
+    "(title text, filename text, date text, username text, content text, comment text)"
+)
+
+
 print("=" * 60)
 print("Parsing XML and saving revisions by page.")
 usernames = set()
@@ -599,6 +594,17 @@ def commit_file(title, filename, date, username, contents, comment):
         handle.write(base64.b64decode(contents))
     commit_files([filename], username, date, comment)
 
+
+CASE_SENSITIVE = False
+try:
+    os.lstat(db.upper())
+except IOError as e:
+    import errno
+
+    if e.errno == errno.ENOENT:
+        CASE_SENSITIVE = True
+if not CASE_SENSITIVE:
+    sys.stderr.write("WARNING: File system is case insensitive - a potential issue.\n")
 
 # print("=" * 60)
 # print("Checking for potential name clashes")
