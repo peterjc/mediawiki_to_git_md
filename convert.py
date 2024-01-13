@@ -126,6 +126,10 @@ e = ElementTree.iterparse(xml_handle, events=("start", "end"))
 
 if os.path.isfile(db):
     os.remove(db)
+assert db != db.upper()
+if os.path.isfile(db.upper()):
+    os.remove(db.upper())
+
 conn = sqlite3.connect(db)
 c = conn.cursor()
 # Going to use this same table for BOTH plain text revisions to pages
@@ -135,6 +139,16 @@ c.execute(
     "CREATE TABLE revisions "
     "(title text, filename text, date text, username text, content text, comment text)"
 )
+
+CASE_SENSITIVE = False
+try:
+    os.lstat(db.upper())
+except IOError as e:
+    import errno
+    if e.errno == errno.ENOENT:
+        CASE_SENSITIVE = True
+if not CASE_SENSITIVE:
+    sys.stderr.write("WARNING: File system is case insensitive - a potential issue.\n")
 
 
 def un_div(text):
@@ -578,26 +592,27 @@ def commit_file(title, filename, date, username, contents, comment):
     commit_files([filename], username, date, comment)
 
 
-if sys.platform != "linux2":
-    # print("=" * 60)
-    # print("Checking for potential name clashes")
-    names = dict()
-    for (title,) in c.execute("SELECT DISTINCT title FROM revisions ORDER BY title"):
-        if ignore_by_prefix(title):
-            assert False, "Should have already excluded %s?" % title
-            pass
-        elif title.lower() not in names:
-            names[title.lower()] = title
-        else:
-            if names[title.lower()] != title:
-                print("WARNING: Multiple case variants exist, e.g.")
-                print(" - " + title)
-                print(" - " + names[title.lower()])
-                print(
-                    "If your file system cannot support such filenames at the same time"
-                )
-                print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
-                sys.exit(1)  # needs a --force option or something?
+# print("=" * 60)
+# print("Checking for potential name clashes")
+names = dict()
+for (title,) in c.execute("SELECT DISTINCT title FROM revisions ORDER BY title"):
+    if ignore_by_prefix(title):
+        assert False, "Should have already excluded %s?" % title
+        pass
+    elif title.lower() not in names:
+        names[title.lower()] = title
+    else:
+        if names[title.lower()] != title:
+            print("WARNING: Multiple case variants exist, e.g.")
+            print(" - " + title)
+            print(" - " + names[title.lower()])
+            print(
+                "If your file system cannot support such filenames at the same time"
+            )
+            print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
+            if not CASE_SENSITIVE:
+                sys.exit("ERROR: Mixed case files found, but file system insensitive")  # needs a --force option or something?
+
 print("=" * 60)
 print("Sorting changes by revision date...")
 for title, filename, date, username, text, comment in c.execute(
