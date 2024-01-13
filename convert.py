@@ -117,23 +117,6 @@ if os.path.isfile(user_blacklist):
 else:
     sys.stderr.write("WARNING - running wihtout username ignore list\n")
 
-db = mediawiki_xml_dump + ".sqlite"
-if mediawiki_xml_dump in ["-", "/dev/stdin"]:
-    xml_handle = open("/dev/stdin", "rb")
-    db = "stdin.sqlite"
-elif mediawiki_xml_dump.endswith(".gz"):
-    import gzip
-
-    xml_handle = gzip.open(mediawiki_xml_dump, "rb")
-elif mediawiki_xml_dump.endswith(".bz2"):
-    import bz2
-
-    xml_handle = bz2.open(mediawiki_xml_dump, "rb")
-else:
-    xml_handle = open(mediawiki_xml_dump, "rb")
-e = ElementTree.iterparse(xml_handle, events=("start", "end"))
-
-
 def un_div(text):
     """Remove wrapping <div...>text</div> leaving just text."""
     if text.strip().startswith("<div ") and text.strip().endswith("</div>"):
@@ -470,116 +453,137 @@ def commit_files(filenames, username, date, comment):
         sys.exit(child.returncode)
 
 
+def parse_xml(mediawiki_xml_dump):
+    print("=" * 60)
+    print("Parsing XML and saving revisions by page.")
+
+    if mediawiki_xml_dump in ["-", "/dev/stdin"]:
+        xml_handle = open("/dev/stdin", "rb")
+    elif mediawiki_xml_dump.endswith(".gz"):
+        import gzip
+
+        xml_handle = gzip.open(mediawiki_xml_dump, "rb")
+    elif mediawiki_xml_dump.endswith(".bz2"):
+        import bz2
+
+        xml_handle = bz2.open(mediawiki_xml_dump, "rb")
+    else:
+        xml_handle = open(mediawiki_xml_dump, "rb")
+
+    usernames = set()
+    title = None
+    filename = None
+    date = None
+    comment = None
+    username = None
+    text = None
+    revision_count = 0
+    e = ElementTree.iterparse(xml_handle, events=("start", "end"))
+    for event, element in e:
+        tag = clean_tag(element.tag)
+        if event == "start":
+            if tag == "page":
+                assert title is None, title
+                assert date is None, date
+            if tag == "revision" or tag == "upload":
+                assert date is None, "%r for %r" % (date, title)
+            if tag == "contents":
+                assert element.attrib["encoding"] == "base64"
+        elif event == "end":
+            if tag == "title":
+                title = element.text.strip()
+            elif tag == "timestamp":
+                date = element.text.strip()
+            elif tag == "comment":
+                if element.text is not None:
+                    comment = element.text.strip()
+            elif tag == "username":
+                username = element.text.strip()
+            elif tag == "text":
+                text = element.text
+            elif tag == "contents":
+                # Used in uploads
+                text = element.text.strip()
+            elif tag == "filename":
+                # Expected in uploads
+                filename = element.text.strip()
+            elif tag == "revision":
+                if username is None:
+                    username = ""
+                if comment is None:
+                    comment = ""
+                if username not in blacklist:
+                    if title.startswith("File:"):
+                        # print("Ignoring revision for %s in favour of upload entry" % title)
+                        pass
+                    elif ignore_by_prefix(title):
+                        # print("Ignoring revision for %s due to title prefix" % title)
+                        pass
+                    elif text is not None:
+                        # if debug:
+                        #     sys.stderr.write(f"Recording '{title}' as of {date} by {username}\n")
+                        c.execute(
+                            "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
+                            (title, filename, date, username, text, comment),
+                        )
+                        revision_count += 1
+                        if revision_count % 10000 == 0:
+                            sys.stderr.write(f"DEBUG: {revision_count} revisions so far\n")
+                            conn.commit()
+                        if debug and revision_count > 500:
+                            sys.stderr.write("DEBUG: That's enough for testing now!\n")
+                            break
+                filename = date = username = text = comment = None
+            elif tag == "upload":
+                assert title.startswith("File:")
+                # Want to treat like a revision?
+                if username is None:
+                    username = ""
+                if comment is None:
+                    comment = ""
+                if username not in blacklist:
+                    if text is not None or title.startswith("File:"):
+                        # print("Recording '%s' as of upload %s by %s" % (title, date, username))
+                        c.execute(
+                            "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
+                            (title, filename, date, username, text, comment),
+                        )
+                filename = date = username = text = comment = None
+            elif tag == "page":
+                assert date is None, date
+                title = filename = date = username = text = comment = None
+        else:
+            sys.exit("Unexpected event %r with element %r" % (event, element))
+    xml_handle.close()
+    print("Finished parsing XML and saved revisions by page.")
+    conn.commit()
+
+
+db = mediawiki_xml_dump + ".sqlite"
+if mediawiki_xml_dump in ["-", "/dev/stdin"]:
+    db = "stdin.sqlite"
+
 if db != "stdin.sqlite" and os.path.isfile(db) and os.stat(mediawiki_xml_dump).st_mtime < os.stat(db).st_mtime:
     sys.stderr.write(f"Reusing SQLite file {db}\n")
     conn = sqlite3.connect(db)
     c = conn.cursor()
+else:
+    if os.path.isfile(db):
+        os.remove(db)
+    assert db != db.upper()
+    if os.path.isfile(db.upper()):
+        os.remove(db.upper())
 
-if os.path.isfile(db):
-    os.remove(db)
-assert db != db.upper()
-if os.path.isfile(db.upper()):
-    os.remove(db.upper())
-
-conn = sqlite3.connect(db)
-c = conn.cursor()
-# Going to use this same table for BOTH plain text revisions to pages
-# AND for base64 encoded uploads for file attachments, because want
-# to sort both by date and turn each into a commit.
-c.execute(
-    "CREATE TABLE revisions "
-    "(title text, filename text, date text, username text, content text, comment text)"
-)
-
-
-print("=" * 60)
-print("Parsing XML and saving revisions by page.")
-usernames = set()
-title = None
-filename = None
-date = None
-comment = None
-username = None
-text = None
-revision_count = 0
-for event, element in e:
-    tag = clean_tag(element.tag)
-    if event == "start":
-        if tag == "page":
-            assert title is None, title
-            assert date is None, date
-        if tag == "revision" or tag == "upload":
-            assert date is None, "%r for %r" % (date, title)
-        if tag == "contents":
-            assert element.attrib["encoding"] == "base64"
-    elif event == "end":
-        if tag == "title":
-            title = element.text.strip()
-        elif tag == "timestamp":
-            date = element.text.strip()
-        elif tag == "comment":
-            if element.text is not None:
-                comment = element.text.strip()
-        elif tag == "username":
-            username = element.text.strip()
-        elif tag == "text":
-            text = element.text
-        elif tag == "contents":
-            # Used in uploads
-            text = element.text.strip()
-        elif tag == "filename":
-            # Expected in uploads
-            filename = element.text.strip()
-        elif tag == "revision":
-            if username is None:
-                username = ""
-            if comment is None:
-                comment = ""
-            if username not in blacklist:
-                if title.startswith("File:"):
-                    # print("Ignoring revision for %s in favour of upload entry" % title)
-                    pass
-                elif ignore_by_prefix(title):
-                    # print("Ignoring revision for %s due to title prefix" % title)
-                    pass
-                elif text is not None:
-                    # if debug:
-                    #     sys.stderr.write(f"Recording '{title}' as of {date} by {username}\n")
-                    c.execute(
-                        "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
-                        (title, filename, date, username, text, comment),
-                    )
-                    revision_count += 1
-                    if revision_count % 10000 == 0:
-                        sys.stderr.write(f"DEBUG: {revision_count} revisions so far\n")
-                        conn.commit()
-                    if debug and revision_count > 500:
-                        sys.stderr.write("DEBUG: That's enough for testing now!\n")
-                        break
-            filename = date = username = text = comment = None
-        elif tag == "upload":
-            assert title.startswith("File:")
-            # Want to treat like a revision?
-            if username is None:
-                username = ""
-            if comment is None:
-                comment = ""
-            if username not in blacklist:
-                if text is not None or title.startswith("File:"):
-                    # print("Recording '%s' as of upload %s by %s" % (title, date, username))
-                    c.execute(
-                        "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
-                        (title, filename, date, username, text, comment),
-                    )
-            filename = date = username = text = comment = None
-        elif tag == "page":
-            assert date is None, date
-            title = filename = date = username = text = comment = None
-    else:
-        sys.exit("Unexpected event %r with element %r" % (event, element))
-xml_handle.close()
-print("Finished parsing XML and saved revisions by page.")
-conn.commit()
+    conn = sqlite3.connect(db)
+    c = conn.cursor()
+    # Going to use this same table for BOTH plain text revisions to pages
+    # AND for base64 encoded uploads for file attachments, because want
+    # to sort both by date and turn each into a commit.
+    c.execute(
+        "CREATE TABLE revisions "
+        "(title text, filename text, date text, username text, content text, comment text)"
+    )
+    parse_xml(mediawiki_xml_dump)
 
 
 def commit_file(title, filename, date, username, contents, comment):
