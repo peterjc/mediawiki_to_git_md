@@ -40,6 +40,7 @@ if "-v" in sys.argv or "--version" in sys.argv:
     print("This is mediawiki_to_git_md version " + __version__)
     sys.exit(0)
 
+
 def check_pandoc():
     try:
         child = subprocess.Popen(
@@ -85,30 +86,36 @@ if prefix:
         os.mkdir(prefix)
 
 user_mapping = dict()
-with open(user_table, "r") as handle:
-    for line in handle:
-        if not line.strip():
-            continue
-        try:
-            username, github = line.strip().split("\t")
-        except ValueError:
-            sys.stderr.write("Invalid entry in %s: %s" % (user_table, line))
-            sys.exit(1)
-        # TODO - expand this with a regular expression or something
-        if " <" not in github or "@" not in github or ">" not in github:
-            sys.stderr.write("Invalid entry for %r: %r\n" % (username, github))
-            sys.stderr.write(
-                "Second column in %s should use the format: name <email>, e.g.\n"
-                % user_table
-            )
-            sys.stderr.write("A.N. Other <a.n.other@example.org>\n")
-            sys.exit(1)
-        user_mapping[username] = github
+if os.path.isfile(user_table):
+    with open(user_table, "r") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                username, github = line.strip().split("\t")
+            except ValueError:
+                sys.stderr.write("Invalid entry in %s: %s" % (user_table, line))
+                sys.exit(1)
+            # TODO - expand this with a regular expression or something
+            if " <" not in github or "@" not in github or ">" not in github:
+                sys.stderr.write("Invalid entry for %r: %r\n" % (username, github))
+                sys.stderr.write(
+                    "Second column in %s should use the format: name <email>, e.g.\n"
+                    % user_table
+                )
+                sys.stderr.write("A.N. Other <a.n.other@example.org>\n")
+                sys.exit(1)
+            user_mapping[username] = github
+else:
+    sys.stderr.write("WARNING - running without username to GitHub mapping\n")
 
 blacklist = set()
-with open(user_blacklist, "r") as handle:
-    for line in handle:
-        blacklist.add(line.strip())
+if os.path.isfile(user_blacklist):
+    with open(user_blacklist, "r") as handle:
+        for line in handle:
+            blacklist.add(line.strip())
+else:
+    sys.stderr.write("WARNING - running wihtout username ignore list\n")
 
 db = mediawiki_xml_dump + ".sqlite"
 if mediawiki_xml_dump in ["-", "/dev/stdin"]:
@@ -116,9 +123,11 @@ if mediawiki_xml_dump in ["-", "/dev/stdin"]:
     db = "stdin.sqlite"
 elif mediawiki_xml_dump.endswith(".gz"):
     import gzip
+
     xml_handle = gzip.open(mediawiki_xml_dump, "rb")
 elif mediawiki_xml_dump.endswith(".bz2"):
     import bz2
+
     xml_handle = bz2.open(mediawiki_xml_dump, "rb")
 else:
     xml_handle = open(mediawiki_xml_dump, "rb")
@@ -145,6 +154,7 @@ try:
     os.lstat(db.upper())
 except IOError as e:
     import errno
+
     if e.errno == errno.ENOENT:
         CASE_SENSITIVE = True
 if not CASE_SENSITIVE:
@@ -355,9 +365,7 @@ def dump_revision(mw_filename, md_filename, text, title):
                     "You should automatically be redirected to [%s](/%s)\n"
                     % (redirect, make_url(redirect))
                 )
-            print(
-                f"Setup redirection {title} --> {redirect}"
-            )
+            print(f"Setup redirection {title} --> {redirect}")
             return True
 
     with open(mw_filename, "w") as handle:
@@ -606,12 +614,12 @@ for (title,) in c.execute("SELECT DISTINCT title FROM revisions ORDER BY title")
             print("WARNING: Multiple case variants exist, e.g.")
             print(" - " + title)
             print(" - " + names[title.lower()])
-            print(
-                "If your file system cannot support such filenames at the same time"
-            )
+            print("If your file system cannot support such filenames at the same time")
             print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
             if not CASE_SENSITIVE:
-                sys.exit("ERROR: Mixed case files found, but file system insensitive")  # needs a --force option or something?
+                sys.exit(
+                    "ERROR: Mixed case files found, but file system insensitive"
+                )  # needs a --force option or something?
 
 print("=" * 60)
 print("Sorting changes by revision date...")
