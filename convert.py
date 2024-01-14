@@ -609,24 +609,23 @@ except IOError as e:
         CASE_SENSITIVE = True
 if not CASE_SENSITIVE:
     sys.stderr.write("WARNING: File system is case insensitive - a potential issue.\n")
-
-# print("=" * 60)
-# print("Checking for potential name clashes")
-names = dict()
-for (title,) in c.execute("SELECT DISTINCT title FROM revisions ORDER BY title"):
-    if ignore_by_prefix(title):
-        assert False, "Should have already excluded %s?" % title
-        pass
-    elif title.lower() not in names:
-        names[title.lower()] = title
-    else:
-        if names[title.lower()] != title:
-            print("WARNING: Multiple case variants exist, e.g.")
-            print(" - " + title)
-            print(" - " + names[title.lower()])
-            print("If your file system cannot support such filenames at the same time")
-            print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
-            if not CASE_SENSITIVE:
+    # print("=" * 60)
+    # print("Checking for potential name clashes")
+    names = dict()
+    # This will be slow with a large DB!
+    for (title,) in c.execute("SELECT DISTINCT title FROM revisions ORDER BY title"):
+        if ignore_by_prefix(title):
+            assert False, "Should have already excluded %s?" % title
+            pass
+        elif title.lower() not in names:
+            names[title.lower()] = title
+        else:
+            if names[title.lower()] != title:
+                print("WARNING: Multiple case variants exist, e.g.")
+                print(" - " + title)
+                print(" - " + names[title.lower()])
+                print("If your file system cannot support such filenames at the same time")
+                print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
                 sys.exit(
                     "ERROR: Mixed case files found, but file system insensitive"
                 )  # needs a --force option or something?
