@@ -117,6 +117,7 @@ if os.path.isfile(user_blacklist):
 else:
     sys.stderr.write("WARNING - running wihtout username ignore list\n")
 
+
 def un_div(text):
     """Remove wrapping <div...>text</div> leaving just text."""
     if text.strip().startswith("<div ") and text.strip().endswith("</div>"):
@@ -528,7 +529,9 @@ def parse_xml(mediawiki_xml_dump):
                         )
                         revision_count += 1
                         if revision_count % 10000 == 0:
-                            sys.stderr.write(f"DEBUG: {revision_count} revisions so far\n")
+                            sys.stderr.write(
+                                f"DEBUG: {revision_count} revisions so far\n"
+                            )
                             conn.commit()
                         if debug and revision_count > 500:
                             sys.stderr.write("DEBUG: That's enough for testing now!\n")
@@ -563,15 +566,19 @@ db = mediawiki_xml_dump + ".sqlite"
 if mediawiki_xml_dump in ["-", "/dev/stdin"]:
     db = "stdin.sqlite"
 
-if db != "stdin.sqlite" and os.path.isfile(db) and os.stat(mediawiki_xml_dump).st_mtime < os.stat(db).st_mtime:
+if (
+    db != "stdin.sqlite"
+    and os.path.isfile(db)
+    and os.stat(mediawiki_xml_dump).st_mtime < os.stat(db).st_mtime
+):
     sys.stderr.write(f"Checking SQLite file {db}\n")
     conn = sqlite3.connect(db)
     c = conn.cursor()
-    count, = c.execute("SELECT COUNT(*) FROM revisions;").fetchone()
+    (count,) = c.execute("SELECT COUNT(*) FROM revisions;").fetchone()
     if not count:
         sys.exit(f"SQLite file {db} has no revisions\n")
     sys.stderr.write(f"SQLite file {db} has {count} revisions\n")
-    count, = c.execute(
+    (count,) = c.execute(
         "SELECT COUNT(*) FROM sqlite_master WHERE type='index' "
         "AND tbl_name='revisions' and name='idx_date_title';"
     ).fetchone()
@@ -595,10 +602,9 @@ else:
         "(title text, filename text, date text, username text, content text, comment text)"
     )
     parse_xml(mediawiki_xml_dump)
-    c.execute(
-        "CREATE INDEX idx_date_title ON revisions(date, title);"
-    )
+    c.execute("CREATE INDEX idx_date_title ON revisions(date, title);")
     conn.commit()
+
 
 def commit_file(title, filename, date, username, contents, comment):
     # commit an image or other file from its base64 encoded representation
@@ -638,7 +644,9 @@ if not CASE_SENSITIVE:
                 print("WARNING: Multiple case variants exist, e.g.")
                 print(" - " + title)
                 print(" - " + names[title.lower()])
-                print("If your file system cannot support such filenames at the same time")
+                print(
+                    "If your file system cannot support such filenames at the same time"
+                )
                 print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
                 sys.exit(
                     "ERROR: Mixed case files found, but file system insensitive"
