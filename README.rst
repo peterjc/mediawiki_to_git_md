@@ -46,15 +46,17 @@ commit.
 History
 =======
 
-An early version of the script was used for the BioJava
-wiki http://biojava.org which is now hosted at
-https://github.com/biojava/biojava.github.io
+An early Python 2 only version of the script was used
+for the BioJava wiki http://biojava.org which is now
+hosted at https://github.com/biojava/biojava.github.io
 
-A later version of the script (with support for slashes
-in wiki page names) was used for the Biopython wiki
-http://biopython.org which is now hosted at
-https://github.com/biopython/biopython.github.io
+A later Python 2 version of the script (with support
+for slashes in wiki page names) was used for the
+Biopython wiki http://biopython.org which is now hosted
+at https://github.com/biopython/biopython.github.io
 
+This was then labelled v1.0.0 in January 2024, and work
+done to support Python 3 becoming v1.1.0.
 
 TODO
 ====
