@@ -115,7 +115,7 @@ if os.path.isfile(user_blacklist):
         for line in handle:
             blacklist.add(line.strip())
 else:
-    sys.stderr.write("WARNING - running wihtout username ignore list\n")
+    sys.stderr.write("WARNING - running without username ignore list\n")
 
 
 def un_div(text):
