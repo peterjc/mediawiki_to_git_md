@@ -564,9 +564,20 @@ if mediawiki_xml_dump in ["-", "/dev/stdin"]:
     db = "stdin.sqlite"
 
 if db != "stdin.sqlite" and os.path.isfile(db) and os.stat(mediawiki_xml_dump).st_mtime < os.stat(db).st_mtime:
-    sys.stderr.write(f"Reusing SQLite file {db}\n")
+    sys.stderr.write(f"Checking SQLite file {db}\n")
     conn = sqlite3.connect(db)
     c = conn.cursor()
+    count, = c.execute("SELECT COUNT(*) FROM revisions;").fetchone()
+    if not count:
+        sys.exit(f"SQLite file {db} has no revisions\n")
+    sys.stderr.write(f"SQLite file {db} has {count} revisions\n")
+    count, = c.execute(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='index' "
+        "AND tbl_name='revisions' and name='idx_date_title';"
+    ).fetchone()
+    if not count:
+        sys.exit(f"Can't reuse partial SQLite file {db} - missing index")
+
 else:
     if os.path.isfile(db):
         os.remove(db)
@@ -584,7 +595,10 @@ else:
         "(title text, filename text, date text, username text, content text, comment text)"
     )
     parse_xml(mediawiki_xml_dump)
-
+    c.execute(
+        "CREATE INDEX idx_date_title ON revisions(date, title);"
+    )
+    conn.commit()
 
 def commit_file(title, filename, date, username, contents, comment):
     # commit an image or other file from its base64 encoded representation
