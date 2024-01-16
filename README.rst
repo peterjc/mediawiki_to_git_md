@@ -33,9 +33,9 @@ for pulling the names of blocked users from an HTML
 download of the wiki's ``Special:BlockList`` page.
 
 It is also worth double checking the first run's output for any
-reverts which could indicate additional accounts to block:
+reverts which could indicate additional accounts to block::
 
-$ git log | grep "Reverted edits by "
+    $ git log | grep "Reverted edits by "
 
 Also, some revisions making minor changes to the wiki
 formatting may result in no changes to the converted
