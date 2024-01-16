@@ -61,9 +61,7 @@ done to support Python 3 becoming v1.1.0.
 TODO
 ====
 
-* Start using formal version numbers
 * Add a proper command line API exposing options
-* Cope with unicode in the title / filename, e.g. BioPerl
 * Squash quick series of git commits from single author to
   a single page (with same or no comment)?
 * Skip git commits where there was no change in the markdown
