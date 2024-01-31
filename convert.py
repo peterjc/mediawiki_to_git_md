@@ -631,6 +631,8 @@ if not CASE_SENSITIVE:
     names = dict()
     # This will be slow with a large DB!
     for (title,) in c.execute("SELECT DISTINCT title FROM revisions ORDER BY title"):
+        if page_whitelist and title not in page_whitelist:
+            continue
         if ignore_by_prefix(title):
             assert False, "Should have already excluded %s?" % title
             pass
