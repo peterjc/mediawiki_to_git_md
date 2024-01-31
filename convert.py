@@ -246,7 +246,7 @@ def cleanup_markdown(text, source_url):
     # [DAS/1](DAS/1 "wikilink") --> [DAS/1](/wiki/DAS/1 "wikilink")
     p = re.compile(']\([A-Z].* "wikilink"\)')
     for old in p.findall(text):
-        if old.startswith(("](http", "](ftp:", "](mailto:")):
+        if old.startswith(("](https:", "](http:", "](ftp:", "](mailto:")):
             continue
         new = "](/%s%s" % (prefix, old[2:])
         # print("Replacing %s --> %s" % (old[1:], new[1:]))
