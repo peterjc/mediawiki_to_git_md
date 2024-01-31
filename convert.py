@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import argparse
 import os
 import sys
 import subprocess
@@ -11,13 +12,111 @@ from xml.etree import cElementTree as ElementTree
 
 debug = False
 
-prefix = "wiki/"
-mediawiki_ext = "mediawiki"
-markdown_ext = "md"
-user_table = "usernames.txt"
-user_blacklist = "user_blocklist.txt"
-default_email = "anonymous.contributor@example.org"
+__version__ = "1.2.0"
 
+if "-v" in sys.argv or "--version" in sys.argv:
+    print("This is mediawiki_to_git_md version " + __version__)
+    sys.exit(0)
+
+if len(sys.argv) == 1:
+    print("This is mediawiki_to_git_md version " + __version__)
+    print("")
+    print("Basic Usage: ./convert.py -i mediawiki.dump")
+    print("")
+    print(
+        'White list: ./convert.py -i mediawiki.dump -t "Main Page" "File:Example Image.jpg"'
+    )
+    sys.exit()
+
+usage = """\
+Run this script in a git repository where it will make commits to the
+current branch based on parsing a MediaWiki XML dump. e.g.
+
+$ git tag start
+$ git checkout -b import_branch
+$ python convert.py -i ../dump.xml
+
+Tagging the repository before starting and/or making a branch makes it
+easy to revert.
+"""
+
+parser = argparse.ArgumentParser(
+    prog="convert.py",
+    description="Turn a MediaWiki XML dump into MarkDown commits in git",
+    epilog=usage,
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+)
+parser.add_argument(
+    "-i",
+    "--input",
+    metavar="XML",
+    required=True,
+    help="MediaWiki XML file, can be gzip or bz compressed.",
+)
+parser.add_argument(
+    "-t",
+    "--titles",
+    metavar="TITLE",
+    nargs="+",
+    help="Optional white-list of page tiles to import (rest ignored).",
+)
+parser.add_argument(
+    "-u",
+    "--usernames",
+    metavar="FILENAME",
+    default="usernames.txt",
+    help="Simple two-column TSV file mapping MediaWiki usernames to git "
+    "author entries like 'name <email@example.org>'. Default 'usernames.txt'",
+)
+parser.add_argument(
+    "-b",
+    "--blocklist",
+    metavar="FILENAME",
+    default="user_blocklist.txt",
+    help="Simple text file file of MediaWiki usernames to ignore "
+    "(spammers etc), default 'user_blocklist.txt''."
+)
+parser.add_argument(
+    "-e",
+    "--default-email",
+    metavar="EMAIL",
+    default="anonymous.contributor@example.org",
+    help="Email address for users not in the mapping, "
+    "default 'anonymous.contributor@example.org'."
+)
+parser.add_argument(
+    "-p",
+    "--prefix",
+    metavar="PREFIX",
+    default="wiki/",
+    help="URL prefix and subfolder, default 'wiki/'.",
+)
+parser.add_argument(
+    "--mediawiki-ext",
+    metavar="EXT",
+    default="mediawiki",
+    help="File extension for MediaWiki files, default 'mediawiki'.",
+)
+parser.add_argument(
+    "--markdown-ext",
+    metavar="EXT",
+    default="md",
+    help="File extension for MarkDown files, default 'md'.",
+)
+
+
+args = parser.parse_args()
+
+mediawiki_xml_dump = args.input
+page_whitelist = args.titles
+prefix = args.prefix
+mediawiki_ext = args.mediawiki_ext
+markdown_ext = args.markdown_ext
+user_table =args.usernames
+user_blacklist = args.blocklist
+default_email = args.default_email
+
+# Do these need to be configurable?:
 page_prefixes_to_ignore = [
     "Help:",
     "MediaWiki:",
@@ -29,13 +128,6 @@ default_layout = "wiki"  # Can also use None; note get tagpage for category list
 git = "git"  # assume on path
 pandoc = "pandoc"  # assume on path
 
-# Internal settings (user should not touch):
-
-__version__ = "1.1.0"
-
-if "-v" in sys.argv or "--version" in sys.argv:
-    print("This is mediawiki_to_git_md version " + __version__)
-    sys.exit(0)
 
 
 def check_pandoc():
@@ -60,19 +152,6 @@ def check_pandoc():
 
 check_pandoc()
 
-
-if len(sys.argv) == 1:
-    print("This is mediawiki_to_git_md version " + __version__)
-    print("")
-    print("Basic Usage: ./convert.py mediawiki.dump")
-    print("")
-    print(
-        'White list: ./convert.py mediawiki.dump "Main Page" "File:Example Image.jpg"'
-    )
-    sys.exit()
-
-mediawiki_xml_dump = sys.argv[1]  # TODO - proper API
-page_whitelist = sys.argv[2:]
 
 missing_users = dict()
 
