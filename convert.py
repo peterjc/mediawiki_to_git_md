@@ -17,10 +17,7 @@ markdown_ext = "md"
 user_table = "usernames.txt"
 user_blacklist = "user_blocklist.txt"
 default_email = "anonymous.contributor@example.org"
-base_url = (
-    "http://www.open-bio.org/"  # Used for images etc; prefix is appended to this!
-)
-base_image_url = base_url + "w/images/"  # Used for images
+
 page_prefixes_to_ignore = [
     "Help:",
     "MediaWiki:",
