@@ -316,9 +316,6 @@ def cleanup_markdown(text, source_url):
         source = source_url
     if "/" not in source:
         return text
-    if not prefix:
-        # How would we change it?
-        return text
 
     # Looking for ...](URL "wikilink")... where the URL should look
     # like a relative link (no http etc), but may not be, e.g.
@@ -347,8 +344,8 @@ def make_cannonical(title):
 
 
 def make_url(title):
-    """Spaces to underscore; adds prefix; adds trailing slash."""
-    return os.path.join(prefix, title.replace(" ", "_") + "/")
+    """Spaces to underscore; adds prefix; no trailing slash."""
+    return os.path.join(prefix, title.replace(" ", "_"))
 
 
 def make_filename(title, ext):
