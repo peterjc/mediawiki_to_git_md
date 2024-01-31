@@ -698,3 +698,4 @@ if missing_users:
 print("Removing any empty commits...")
 run("%s filter-branch --prune-empty -f HEAD" % git)
 print("Done")
+print("You may now wish to delete the legacy mediawiki files, keeping just the markdown?")
