@@ -12,7 +12,7 @@ from xml.etree import cElementTree as ElementTree
 
 debug = False
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 if "-v" in sys.argv or "--version" in sys.argv:
     print("This is mediawiki_to_git_md version " + __version__)
@@ -723,9 +723,9 @@ if not CASE_SENSITIVE:
                     "If your file system cannot support such filenames at the same time"
                 )
                 print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
-                sys.exit(
-                    "ERROR: Mixed case files found, but file system insensitive"
-                )  # needs a --force option or something?
+                #sys.exit(
+                #    "ERROR: Mixed case files found, but file system insensitive"
+                #)  # needs a --force option or something?
 
 print("=" * 60)
 print("Sorting changes by revision date...")
