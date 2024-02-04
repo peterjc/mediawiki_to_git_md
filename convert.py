@@ -12,7 +12,7 @@ from xml.etree import cElementTree as ElementTree
 
 debug = False
 
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 
 if "-v" in sys.argv or "--version" in sys.argv:
     print("This is mediawiki_to_git_md version " + __version__)
@@ -74,7 +74,7 @@ parser.add_argument(
     metavar="FILENAME",
     default="user_blocklist.txt",
     help="Simple text file file of MediaWiki usernames to ignore "
-    "(spammers etc), default 'user_blocklist.txt''."
+    "(spammers etc), default 'user_blocklist.txt''.",
 )
 parser.add_argument(
     "-e",
@@ -82,7 +82,7 @@ parser.add_argument(
     metavar="EMAIL",
     default="anonymous.contributor@example.org",
     help="Email address for users not in the mapping, "
-    "default 'anonymous.contributor@example.org'."
+    "default 'anonymous.contributor@example.org'.",
 )
 parser.add_argument(
     "-p",
@@ -112,8 +112,8 @@ page_whitelist = args.titles
 prefix = args.prefix
 mediawiki_ext = args.mediawiki_ext
 markdown_ext = args.markdown_ext
-user_table =args.usernames
-user_blacklist = args.blocklist
+user_table = args.usernames
+user_blocklist = args.blocklist
 default_email = args.default_email
 
 # Do these need to be configurable?:
@@ -127,7 +127,6 @@ page_prefixes_to_ignore = [
 default_layout = "wiki"  # Can also use None; note get tagpage for category listings
 git = "git"  # assume on path
 pandoc = "pandoc"  # assume on path
-
 
 
 def check_pandoc():
@@ -185,11 +184,11 @@ if os.path.isfile(user_table):
 else:
     sys.stderr.write("WARNING - running without username to GitHub mapping\n")
 
-blacklist = set()
-if os.path.isfile(user_blacklist):
-    with open(user_blacklist, "r") as handle:
+blocklist = set()
+if os.path.isfile(user_blocklist):
+    with open(user_blocklist, "r") as handle:
         for line in handle:
-            blacklist.add(line.strip())
+            blocklist.add(line.strip())
 else:
     sys.stderr.write("WARNING - running without username ignore list\n")
 
@@ -586,29 +585,28 @@ def parse_xml(mediawiki_xml_dump):
                     username = ""
                 if comment is None:
                     comment = ""
-                if username not in blacklist:
-                    if title.startswith("File:"):
-                        # print("Ignoring revision for %s in favour of upload entry" % title)
-                        pass
-                    elif ignore_by_prefix(title):
-                        # print("Ignoring revision for %s due to title prefix" % title)
-                        pass
-                    elif text is not None:
-                        # if debug:
-                        #     sys.stderr.write(f"Recording '{title}' as of {date} by {username}\n")
-                        c.execute(
-                            "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
-                            (title, filename, date, username, text, comment),
-                        )
-                        revision_count += 1
-                        if revision_count % 10000 == 0:
-                            sys.stderr.write(
-                                f"DEBUG: {revision_count} revisions so far\n"
-                            )
-                            conn.commit()
-                        if debug and revision_count > 500:
-                            sys.stderr.write("DEBUG: That's enough for testing now!\n")
-                            break
+                if username in blocklist:
+                    sys.stderr.write(f"Ignoring {username} from block list\n")
+                elif title.startswith("File:"):
+                    # print("Ignoring revision for %s in favour of upload entry" % title)
+                    pass
+                elif ignore_by_prefix(title):
+                    # print("Ignoring revision for %s due to title prefix" % title)
+                    pass
+                elif text is not None:
+                    # if debug:
+                    #     sys.stderr.write(f"Recording '{title}' as of {date} by {username}\n")
+                    c.execute(
+                        "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
+                        (title, filename, date, username, text, comment),
+                    )
+                    revision_count += 1
+                    if revision_count % 10000 == 0:
+                        sys.stderr.write(f"DEBUG: {revision_count} revisions so far\n")
+                        conn.commit()
+                    if debug and revision_count > 500:
+                        sys.stderr.write("DEBUG: That's enough for testing now!\n")
+                        break
                 filename = date = username = text = comment = None
             elif tag == "upload":
                 assert title.startswith("File:")
@@ -617,13 +615,14 @@ def parse_xml(mediawiki_xml_dump):
                     username = ""
                 if comment is None:
                     comment = ""
-                if username not in blacklist:
-                    if text is not None or title.startswith("File:"):
-                        # print("Recording '%s' as of upload %s by %s" % (title, date, username))
-                        c.execute(
-                            "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
-                            (title, filename, date, username, text, comment),
-                        )
+                if username in blocklist:
+                    pass
+                elif text is not None or title.startswith("File:"):
+                    # print("Recording '%s' as of upload %s by %s" % (title, date, username))
+                    c.execute(
+                        "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
+                        (title, filename, date, username, text, comment),
+                    )
                 filename = date = username = text = comment = None
             elif tag == "page":
                 assert date is None, date
@@ -723,15 +722,19 @@ if not CASE_SENSITIVE:
                     "If your file system cannot support such filenames at the same time"
                 )
                 print("(e.g. Windows, or default Mac OS X) this conversion will FAIL.")
-                #sys.exit(
+                # sys.exit(
                 #    "ERROR: Mixed case files found, but file system insensitive"
-                #)  # needs a --force option or something?
+                # )  # needs a --force option or something?
 
 print("=" * 60)
 print("Sorting changes by revision date...")
 for title, filename, date, username, text, comment in c.execute(
     "SELECT * FROM revisions ORDER BY date, title"
 ):
+    if username in blocklist:
+        # Might still be in the SQLite file if parsed XML
+        # earlier with less strict block list
+        sys.stderr.write(f"Ignoring {username} from block list\n")
     if filename:
         filename = os.path.join(prefix, filename)
     if text is None:
@@ -776,4 +779,6 @@ if missing_users:
 print("Removing any empty commits...")
 run("%s filter-branch --prune-empty -f HEAD" % git)
 print("Done")
-print("You may now wish to delete the legacy mediawiki files, keeping just the markdown?")
+print(
+    "You may now wish to delete the legacy mediawiki files, keeping just the markdown?"
+)
