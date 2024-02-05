@@ -12,7 +12,7 @@ from xml.etree import cElementTree as ElementTree
 
 debug = False
 
-__version__ = "1.2.2"
+__version__ = "1.2.3"
 
 if "-v" in sys.argv or "--version" in sys.argv:
     print("This is mediawiki_to_git_md version " + __version__)
@@ -483,6 +483,7 @@ def commit_revision(mw_filename, md_filename, username, date, comment):
 
 def commit_files(filenames, username, date, comment):
     assert filenames, "Nothing to commit: %r" % filenames
+    assert username not in blocklist, username
     for f in filenames:
         assert os.path.isfile(f), f
     cmd = [git, "add"] + filenames
@@ -585,9 +586,7 @@ def parse_xml(mediawiki_xml_dump):
                     username = ""
                 if comment is None:
                     comment = ""
-                if username in blocklist:
-                    sys.stderr.write(f"Ignoring {username} from block list\n")
-                elif title.startswith("File:"):
+                if title.startswith("File:"):
                     # print("Ignoring revision for %s in favour of upload entry" % title)
                     pass
                 elif ignore_by_prefix(title):
@@ -615,9 +614,7 @@ def parse_xml(mediawiki_xml_dump):
                     username = ""
                 if comment is None:
                     comment = ""
-                if username in blocklist:
-                    pass
-                elif text is not None or title.startswith("File:"):
+                if text is not None or title.startswith("File:"):
                     # print("Recording '%s' as of upload %s by %s" % (title, date, username))
                     c.execute(
                         "INSERT INTO revisions VALUES (?, ?, ?, ?, ?, ?)",
@@ -685,7 +682,7 @@ def commit_file(title, filename, date, username, contents, comment):
         filename = os.path.join(
             prefix, make_cannonical(title[5:])
         )  # should already have extension
-    print("Committing %s as of upload %s by %s" % (filename, date, username))
+    print("Commit %s %s by %s : %s" % (filename, date, username, comment[:40]))
     with open(filename, "wb") as handle:
         handle.write(base64.b64decode(contents))
     commit_files([filename], username, date, comment)
@@ -735,6 +732,7 @@ for title, filename, date, username, text, comment in c.execute(
         # Might still be in the SQLite file if parsed XML
         # earlier with less strict block list
         sys.stderr.write(f"Ignoring {username} from block list\n")
+        continue
     if filename:
         filename = os.path.join(prefix, filename)
     if text is None:
@@ -761,7 +759,7 @@ for title, filename, date, username, text, comment in c.execute(
     assert filename is None
     md_filename = make_filename(title, markdown_ext)
     mw_filename = make_filename(title, mediawiki_ext)
-    print("Converting %s as of revision %s by %s" % (md_filename, date, username))
+    print("Convert %s %s by %s" % (md_filename, date, username))
     if dump_revision(mw_filename, md_filename, text, title):
         commit_revision(mw_filename, md_filename, username, date, comment)
     else:
