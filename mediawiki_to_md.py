@@ -371,6 +371,7 @@ print(f"Have {len(names)} input MediaWiki files")
 
 print("Checking for redirects...")
 redirects = {}
+redirects_from = {}
 for mw_filename in names:
     with open(mw_filename) as handle:
         original = handle.read()
@@ -383,8 +384,13 @@ for mw_filename in names:
         if "\n" not in redirect and "]" not in redirect:
             # Maybe I should just have written a regular expression?
             # We will do these AFTER converting the target using redirect_from
-            redirects[mw_filename] = redirect
             print(f" * redirection {mw_filename} --> {redirect}")
+            redirects[mw_filename] = redirect
+            try:
+                redirects_from[redirect].append(title)
+            except KeyError:
+                redirects_from[redirect] = [title]
+
 
 print("Converting pages...")
 for mw_filename in names:
@@ -457,6 +463,10 @@ for mw_filename in names:
                 handle.write("tags:\n")
                 for category in categories:
                     handle.write(" - %s\n" % category)
+        if title in redirects_from:
+            handle.write("redirect_from:\n")
+            for redirect in sorted(redirects_from[title]):
+                handle.write(" - %s\n" % make_url(redirect))
         handle.write("---\n\n")
         handle.write(cleanup_markdown(stdout, make_url(title)))
     os.remove(tmp_mediawiki)
