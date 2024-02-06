@@ -340,10 +340,13 @@ def commit_file(title, filename, date, username, contents, comment):
         handle.write(base64.b64decode(contents))
     commit_files([filename], username, date, comment)
 
+
 names = []
 for name in args.input:
     if name.startswith("../"):
-        sys.exit(f"ERROR: Input files must be within the current directory and git repo")
+        sys.exit(
+            f"ERROR: Input files must be within the current directory and git repo"
+        )
     if os.path.isdir(name):
         names.extend(glob.glob(name + "/*." + mediawiki_ext))
     elif os.path.isfile(name) and name.endswith("." + mediawiki_ext):
@@ -352,12 +355,93 @@ for name in args.input:
         sys.exit(f"ERROR: Unexpected input {name}")
 print(f"Have {len(names)} input MediaWiki files")
 
+print("Checking for redirects...")
+redirects = {}
 for mw_filename in names:
-    md_filename = mw_filename[:-len(mediawiki_ext)] + markdown_ext
+    with open(mw_filename) as handle:
+        original = handle.read()
+
+    if original.strip().startswith("#REDIRECT [[") and original.strip().endswith("]]"):
+        redirect = original.strip()[12:-2]
+        if "\n" not in redirect and "]" not in redirect:
+            # Maybe I should just have written a regular expression?
+            # We will do these AFTER converting the target using redirect_from
+            redirects[mw_filename] = redirect
+            print(f" * redirection {mw_filename} --> {redirect}")
+
+print("Converting pages...")
+for mw_filename in names:
+    if mw_filename in redirects:
+        continue
+    md_filename = mw_filename[: -len(mediawiki_ext)] + markdown_ext
     if os.path.isfile(md_filename):
         sys.stderr.write(f"WARNING - will overwrite {md_filename}\n")
-    print(f"{mw_filename} --> {md_filename}")
 
-    
+    print(f" * {mw_filename} --> {md_filename}")
+
+    # Yes, sadly we've opened most files twice :(
+    with open(mw_filename) as handle:
+        original = handle.read()
+
+    folder, local_filename = os.path.split(mw_filename)
+    original = text
+    text, categories = cleanup_mediawiki(text)
+
+    with tempfile.NamedTempoaryFile("w", delete_on_close=False) as handle:
+        handle.write(text)
+        tmp_mediawiki = handle.name
+
+    # TODO - Try piping text via stdin
+    folder, local_filename = os.path.split(md_filename)
+    child = subprocess.Popen(
+        [
+            pandoc,
+            "-f",
+            "mediawiki",
+            "-t",
+            # "markdown_github-hard_line_breaks",
+            "gfm-hard_line_breaks",
+            tmp_mediawiki,
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    stdout, stderr = child.communicate()
+
+    # What did pandoc think?
+    if stderr or child.returncode:
+        print(stdout)
+    if stderr:
+        sys.stderr.write(stderr)
+    if child.returncode:
+        sys.stderr.write("Error %i from pandoc\n" % child.returncode)
+    if not stdout:
+        sys.stderr.write("No output from pandoc for %r\n" % mw_filename)
+    if child.returncode or not stdout:
+        return False
+    with open(md_filename, "w") as handle:
+        handle.write("---\n")
+        handle.write("title: %s\n" % title)
+        handle.write("permalink: %s\n" % make_url(title))
+        # TODO: add redirects here
+        if title.startswith("Category:"):
+            # This assumes have layout template called tagpage
+            # which will insert the tag listing automatically
+            # i.e. Behaves like MediaWiki for Category:XXX
+            # where we mapped XXX as a tag in Jekyll
+            handle.write("layout: tagpage\n")
+            handle.write("tag: %s\n" % title[9:])
+        else:
+            # Not a category page,
+            if default_layout:
+                handle.write("layout: %s\n" % default_layout)
+            if categories:
+                # Map them to Jekyll tags as can have more than one per page:
+                handle.write("tags:\n")
+                for category in categories:
+                    handle.write(" - %s\n" % category)
+        handle.write("---\n\n")
+        handle.write(cleanup_markdown(stdout, make_url(title)))
 
 print("Done")
