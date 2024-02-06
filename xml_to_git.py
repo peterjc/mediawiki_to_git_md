@@ -38,8 +38,8 @@ $ python xml_to_git.py -i ../dump.xml
 
 Tagging the repository before starting and/or making a branch makes it
 easy to revert. As of v2, this records the revisions in the original
-MediaWiki markup, with a final commit suggested for converting the final
-version into Markdown using Pandoc.
+MediaWiki markup (plus header with original title and URL), with the
+expectation of final commits using mediawiki_to_md.py and pandoc.
 """
 
 parser = argparse.ArgumentParser(
@@ -499,6 +499,12 @@ for title, filename, date, username, text, comment in c.execute(
     if not comment:
         comment = f"Update {title}"
     with open(mw_filename, "w") as handle:
+        # We need to record the page title somewhere
+        # Might as well use a Markdown style header block:
+        handle.write("---\n")
+        handle.write("title: %s\n" % title)
+        handle.write("permalink: %s\n" % make_url(title))
+        handle.write("---\n\n")
         handle.write(text)
     commit_files([mw_filename], username, date, comment)
 
