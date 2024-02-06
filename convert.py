@@ -12,7 +12,7 @@ from xml.etree import cElementTree as ElementTree
 
 debug = False
 
-__version__ = "1.2.5"
+__version__ = "2.0.0.dev0"
 
 if "-v" in sys.argv or "--version" in sys.argv:
     print("This is mediawiki_to_git_md version " + __version__)
@@ -37,12 +37,14 @@ $ git checkout -b import_branch
 $ python convert.py -i ../dump.xml
 
 Tagging the repository before starting and/or making a branch makes it
-easy to revert.
+easy to revert. As of v2, this records the revisions in the original
+MediaWiki markup, with a final commit converting the final version into
+Markdown using Pandoc.
 """
 
 parser = argparse.ArgumentParser(
     prog="convert.py",
-    description="Turn a MediaWiki XML dump into MarkDown commits in git",
+    description="Turn a MediaWiki XML dump into MediaWiki commits in git",
     epilog=usage,
     formatter_class=argparse.RawDescriptionHelpFormatter,
 )
@@ -156,6 +158,7 @@ check_pandoc()
 
 missing_users = dict()
 unwanted_commits = 0
+
 
 assert os.path.isdir(".git"), "Expected to be in a Git repository!"
 if prefix:
@@ -377,89 +380,6 @@ def ignore_by_prefix(title):
     return False
 
 
-def dump_revision(mw_filename, md_filename, text, title):
-    # We may have unicode, e.g. character u'\xed' (accented i)
-    folder, local_filename = os.path.split(mw_filename)
-    original = text
-    text, categories = cleanup_mediawiki(text)
-
-    if text.strip().startswith("#REDIRECT [[") and text.strip().endswith("]]"):
-        redirect = text.strip()[12:-2]
-        if "\n" not in redirect and "]" not in redirect:
-            # Maybe I should just have written a regular expression?
-            with open(mw_filename, "w") as handle:
-                handle.write(original)
-            with open(md_filename, "w") as handle:
-                handle.write("---\n")
-                handle.write("title: %s\n" % title)
-                handle.write("permalink: %s\n" % make_url(title))
-                handle.write("redirect_to: /%s\n" % make_url(redirect))
-                handle.write("---\n\n")
-                handle.write(
-                    "You should automatically be redirected to [%s](/%s)\n"
-                    % (redirect, make_url(redirect))
-                )
-            print(f"Setup redirection {title} --> {redirect}")
-            return True
-
-    with open(mw_filename, "w") as handle:
-        handle.write(text)
-    folder, local_filename = os.path.split(md_filename)
-    child = subprocess.Popen(
-        [
-            pandoc,
-            "-f",
-            "mediawiki",
-            "-t",
-            # "markdown_github-hard_line_breaks",
-            "gfm-hard_line_breaks",
-            mw_filename,
-        ],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout, stderr = child.communicate()
-    # Now over-write with the original mediawiki to record that in git,
-    with open(mw_filename, "w") as handle:
-        handle.write(original)
-
-    # What did pandoc think?
-    if stderr or child.returncode:
-        print(stdout)
-    if stderr:
-        sys.stderr.write(stderr)
-    if child.returncode:
-        sys.stderr.write("Error %i from pandoc\n" % child.returncode)
-    if not stdout:
-        sys.stderr.write("No output from pandoc for %r\n" % mw_filename)
-    if child.returncode or not stdout:
-        return False
-    with open(md_filename, "w") as handle:
-        handle.write("---\n")
-        handle.write("title: %s\n" % title)
-        handle.write("permalink: %s\n" % make_url(title))
-        if title.startswith("Category:"):
-            # This assumes have layout template called tagpage
-            # which will insert the tag listing automatically
-            # i.e. Behaves like MediaWiki for Category:XXX
-            # where we mapped XXX as a tag in Jekyll
-            handle.write("layout: tagpage\n")
-            handle.write("tag: %s\n" % title[9:])
-        else:
-            # Note a category page,
-            if default_layout:
-                handle.write("layout: %s\n" % default_layout)
-            if categories:
-                # Map them to Jekyll tags as can have more than one per page:
-                handle.write("tags:\n")
-                for category in categories:
-                    handle.write(" - %s\n" % category)
-        handle.write("---\n\n")
-        handle.write(cleanup_markdown(stdout, make_url(title)))
-    return True
-
-
 def run(cmd_string):
     # print(cmd_string)
     return_code = os.system(cmd_string.encode("utf-8"))
@@ -478,18 +398,10 @@ def runsafe(cmd_array):
         sys.exit(return_code)
 
 
-def commit_revision(mw_filename, md_filename, username, date, comment):
-    assert os.path.isfile(md_filename), md_filename
-    assert os.path.isfile(mw_filename), mw_filename
-    if not comment:
-        comment = "Change to wiki page"
-    commit_files([md_filename, mw_filename], username, date, comment)
-
-
 def commit_files(filenames, username, date, comment):
     assert filenames, "Nothing to commit: %r" % filenames
     for f in filenames:
-        assert os.path.isfile(f), f
+        assert f and os.path.isfile(f), f
     cmd = [git, "add"] + filenames
     runsafe(cmd)
     # TODO - how to detect and skip empty commit?
@@ -504,14 +416,10 @@ def commit_files(filenames, username, date, comment):
         except KeyError:
             missing_users[username] = 1
         author = "%s <%s>" % (username, default_email)
-    elif username in blocklist:
-        author = "Unwanted Contributor <%s>" % default_email
     else:
         # git insists on a name, not just an email address:
         author = "Anonymous Contributor <%s>" % default_email
-    if username in blocklist:
-        comment = "UNWANTED FROM " + username
-    elif not comment:
+    if not comment:
         comment = "No comment"
     # In order to handle quotes etc in the message, rather than -m "%s"
     # using the -F option and piping to stdin.
@@ -695,7 +603,7 @@ def commit_file(title, filename, date, username, contents, comment):
         filename = os.path.join(
             prefix, make_cannonical(title[5:])
         )  # should already have extension
-    print("Commit %s %s by %s : %s" % (filename, date, username, comment[:40]))
+    print("Commit %s %s by %s : %s" % (date, filename, username, comment[:40]))
     with open(filename, "wb") as handle:
         handle.write(base64.b64decode(contents))
     commit_files([filename], username, date, comment)
@@ -767,24 +675,18 @@ for title, filename, date, username, text, comment in c.execute(
     #     # TODO - may need to insert some Jekyll template magic?
     #     # See https://github.com/peterjc/mediawiki_to_git_md/issues/6
     assert filename is None
-    md_filename = make_filename(title, markdown_ext)
     mw_filename = make_filename(title, mediawiki_ext)
     if username in blocklist:
+        unwanted_commits += 1
         comment = f"UNWANTED FROM {username}"
-        print(f"UNWANTED {date} {mw_filename} by {username}")
+        print(f"UNWANTED {date} {filename_mw} by {username}")
     else:
-        print(f"Convert {date} {mw_filename} by {username}")
+        print(f"Commit {date} {filename_mw} by {username}")
     if not comment:
         comment = f"Update {title}"
-    if dump_revision(mw_filename, md_filename, text, title):
-        commit_revision(mw_filename, md_filename, username, date, comment)
-        unwanted_commits += 1
-    else:
-        # Only the mediawiki changed, could not convert to markdown.
-        cmd = "git reset --hard"
-        run(cmd)
-        sys.stderr.write("Skipping this revision!\n")
-
+    with open(mw_filename, "w") as handle:
+        handle.write(text)
+    commit_files([mw_filename], username, date, comment)
 
 print("=" * 60)
 if missing_users:
@@ -794,6 +696,3 @@ if missing_users:
 
 print(f"There are {unwanted_commits} unwanted commits from blocked users.")
 print("Done")
-print(
-    "You may now wish to delete the legacy mediawiki files, keeping just the markdown?"
-)
