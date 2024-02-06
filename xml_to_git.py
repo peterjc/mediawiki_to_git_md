@@ -108,7 +108,6 @@ mediawiki_xml_dump = args.input
 page_whitelist = args.titles
 prefix = args.prefix
 mediawiki_ext = args.mediawiki_ext
-markdown_ext = args.markdown_ext
 user_table = args.usernames
 user_blocklist = args.blocklist
 default_email = args.default_email
@@ -493,9 +492,9 @@ for title, filename, date, username, text, comment in c.execute(
     if username in blocklist:
         unwanted_commits += 1
         comment = f"UNWANTED FROM {username}"
-        print(f"UNWANTED {date} {filename_mw} by {username}")
+        print(f"UNWANTED {date} {mw_filename} by {username}")
     else:
-        print(f"Commit {date} {filename_mw} by {username}")
+        print(f"Commit {date} {mw_filename} by {username}")
     if not comment:
         comment = f"Update {title}"
     with open(mw_filename, "w") as handle:
@@ -503,7 +502,6 @@ for title, filename, date, username, text, comment in c.execute(
         # Might as well use a Markdown style header block:
         handle.write("---\n")
         handle.write("title: %s\n" % title)
-        handle.write("permalink: %s\n" % make_url(title))
         handle.write("---\n\n")
         handle.write(text)
     commit_files([mw_filename], username, date, comment)
