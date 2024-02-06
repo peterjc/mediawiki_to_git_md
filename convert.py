@@ -12,7 +12,7 @@ from xml.etree import cElementTree as ElementTree
 
 debug = False
 
-__version__ = "1.2.3"
+__version__ = "1.2.4"
 
 if "-v" in sys.argv or "--version" in sys.argv:
     print("This is mediawiki_to_git_md version " + __version__)
@@ -73,8 +73,10 @@ parser.add_argument(
     "--blocklist",
     metavar="FILENAME",
     default="user_blocklist.txt",
-    help="Simple text file file of MediaWiki usernames to ignore "
-    "(spammers etc), default 'user_blocklist.txt''.",
+    help="Simple text file file of MediaWiki usernames (spammers etc). "
+    "Uploads will be ignored, but revisions will be recorded with the "
+    "comment 'UNWANTED FROM <Username>' allowing history editing later. "
+    "Default 'user_blocklist.txt''.",
 )
 parser.add_argument(
     "-e",
@@ -153,6 +155,7 @@ check_pandoc()
 
 
 missing_users = dict()
+unwanted_commits = 0
 
 assert os.path.isdir(".git"), "Expected to be in a Git repository!"
 if prefix:
@@ -162,6 +165,7 @@ if prefix:
 
 user_mapping = dict()
 if os.path.isfile(user_table):
+    sys.stderr.write(f"Loading {user_table}\n")
     with open(user_table, "r") as handle:
         for line in handle:
             if not line.strip():
@@ -186,6 +190,7 @@ else:
 
 blocklist = set()
 if os.path.isfile(user_blocklist):
+    sys.stderr.write(f"Loading {user_blocklist}\n")
     with open(user_blocklist, "r") as handle:
         for line in handle:
             blocklist.add(line.strip())
@@ -483,7 +488,6 @@ def commit_revision(mw_filename, md_filename, username, date, comment):
 
 def commit_files(filenames, username, date, comment):
     assert filenames, "Nothing to commit: %r" % filenames
-    assert username not in blocklist, username
     for f in filenames:
         assert os.path.isfile(f), f
     cmd = [git, "add"] + filenames
@@ -491,6 +495,8 @@ def commit_files(filenames, username, date, comment):
     # TODO - how to detect and skip empty commit?
     if username in user_mapping:
         author = user_mapping[username]
+    elif username in blocklist:
+        author = "Unwanted Contributor %s <%s>" % (username, default_email)
     elif username:
         global missing_users
         try:
@@ -498,10 +504,14 @@ def commit_files(filenames, username, date, comment):
         except KeyError:
             missing_users[username] = 1
         author = "%s <%s>" % (username, default_email)
+    elif username in blocklist:
+        author = "Unwanted Contributor <%s>" % default_email
     else:
         # git insists on a name, not just an email address:
         author = "Anonymous Contributor <%s>" % default_email
-    if not comment:
+    if username in blocklist:
+        comment = "UNWANTED FROM " + username
+    elif not comment:
         comment = "No comment"
     # In order to handle quotes etc in the message, rather than -m "%s"
     # using the -F option and piping to stdin.
@@ -655,6 +665,7 @@ if (
         sys.exit(f"Can't reuse partial SQLite file {db} - missing index")
 
 else:
+    sys.stderr.write(f"Creating SQLite file {db}\n")
     if os.path.isfile(db):
         os.remove(db)
     assert db != db.upper()
@@ -673,10 +684,12 @@ else:
     parse_xml(mediawiki_xml_dump)
     c.execute("CREATE INDEX idx_date_title ON revisions(date, title);")
     conn.commit()
+    sys.stderr.write(f"Created SQLite file {db}\n")
 
 
 def commit_file(title, filename, date, username, contents, comment):
     # commit an image or other file from its base64 encoded representation
+    assert username not in blocklist
     assert title.startswith("File:")
     if not filename:
         filename = os.path.join(
@@ -728,11 +741,6 @@ print("Sorting changes by revision date...")
 for title, filename, date, username, text, comment in c.execute(
     "SELECT * FROM revisions ORDER BY date, title"
 ):
-    if username in blocklist:
-        # Might still be in the SQLite file if parsed XML
-        # earlier with less strict block list
-        sys.stderr.write(f"Ignoring {username} from block list\n")
-        continue
     if filename:
         filename = os.path.join(prefix, filename)
     if text is None:
@@ -748,6 +756,8 @@ for title, filename, date, username, text, comment in c.execute(
     if title.startswith("File:"):
         # Example Title File:Wininst.png
         # TODO - capture the preferred filename from the XML!
+        if username in blocklist:
+            sys.stderr.write(f"Ignoring upload {filename} from {username}\n")
         commit_file(title, filename, date, username, text, comment)
         continue
     if title.startswith("Template:"):
@@ -759,14 +769,22 @@ for title, filename, date, username, text, comment in c.execute(
     assert filename is None
     md_filename = make_filename(title, markdown_ext)
     mw_filename = make_filename(title, mediawiki_ext)
-    print("Convert %s %s by %s" % (md_filename, date, username))
+    if username in blocklist:
+        comment = f"UNWANTED FROM {username}"
+        print(f"UNWANTED {date} {mw_filename} by {username}")
+    else:
+        print(f"Convert {date} {mw_filename} by {username}")
+    if not comment:
+        comment = f"Update {title}"
     if dump_revision(mw_filename, md_filename, text, title):
         commit_revision(mw_filename, md_filename, username, date, comment)
+        unwanted_commits += 1
     else:
         # Only the mediawiki changed, could not convert to markdown.
         cmd = "git reset --hard"
         run(cmd)
         sys.stderr.write("Skipping this revision!\n")
+
 
 print("=" * 60)
 if missing_users:
@@ -774,8 +792,7 @@ if missing_users:
     for username in sorted(missing_users):
         print("%i - %s" % (missing_users[username], username))
 
-print("Removing any empty commits...")
-run("%s filter-branch --prune-empty -f HEAD" % git)
+print(f"There are {unwanted_commits} unwanted commits from blocked users.")
 print("Done")
 print(
     "You may now wish to delete the legacy mediawiki files, keeping just the markdown?"
