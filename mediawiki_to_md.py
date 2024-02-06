@@ -2,10 +2,10 @@
 import argparse
 import glob
 import os
+import re
 import sys
 import subprocess
-import re
-from xml.etree import cElementTree as ElementTree
+import tempfile
 
 # User configurable bits (ought to be command line options?):
 
@@ -150,7 +150,7 @@ def cleanup_mediawiki(text):
     Long term this needs to be highly configurable on a site-by-site
     basis, but for now I'll put local hacks here.
 
-    Returns tuple: cleaned up text, list of any categories
+    Returns tuple: cleaned up text, list of any categories, title
     """
     # This tag was probably setup via SyntaxHighlight GeSHi for biopython.org's wiki
     #
@@ -184,6 +184,15 @@ def cleanup_mediawiki(text):
     new = []
     categories = []
     languages = ["python", "perl", "sql", "bash", "ruby", "java", "xml"]
+
+    # This is fragile, but good enough
+    if not text.startswith("---\ntitle: "):
+        sys.exit("ERROR: Missing our title header")
+    text = text[10:].strip()
+    title, text = text.split("\n", 1)
+    assert text.startswith("---\n")
+    text = text[4:]
+
     for line in text.split("\n"):
         # line is already unicode
         # TODO - line = line.replace("\xe2\x80\x8e".decode("utf-8"), "")  # LEFT-TO-RIGHT
@@ -224,14 +233,19 @@ def cleanup_mediawiki(text):
         if "[[User:" in line:
             line = line.replace("[[User:", "[[User%3A")
         new.append(line)
-    return "\n".join(new), categories
+    return "\n".join(new), categories, title
 
 
-tmp = '<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFF\
-FFF">[[Image:Pear.png|left|The Bosc Pear]]</div>'
+tmp = """\
+---
+title: Test
+---
+<div style="float:left; maxwidth: 180px; margin-left:25px; margin-right:15px; background-color: #FFF\
+FFF">[[Image:Pear.png|left|The Bosc Pear]]</div>"""
 assert cleanup_mediawiki(tmp) == (
     "[[Image:Pear.png|left|The Bosc Pear]]",
     [],
+    "Test",
 ), cleanup_mediawiki(tmp)
 del tmp
 
@@ -361,8 +375,11 @@ for mw_filename in names:
     with open(mw_filename) as handle:
         original = handle.read()
 
-    if original.strip().startswith("#REDIRECT [[") and original.strip().endswith("]]"):
-        redirect = original.strip()[12:-2]
+    assert original.startswith("---\ntitle: "), mw_filename
+    text, categories, title = cleanup_mediawiki(original)
+
+    if text.strip().startswith("#REDIRECT [[") and text.strip().endswith("]]"):
+        redirect = text.strip()[12:-2]
         if "\n" not in redirect and "]" not in redirect:
             # Maybe I should just have written a regular expression?
             # We will do these AFTER converting the target using redirect_from
@@ -383,11 +400,10 @@ for mw_filename in names:
     with open(mw_filename) as handle:
         original = handle.read()
 
-    folder, local_filename = os.path.split(mw_filename)
-    original = text
-    text, categories = cleanup_mediawiki(text)
+    assert original.startswith("---\ntitle: "), mw_filename
+    text, categories, title = cleanup_mediawiki(original)
 
-    with tempfile.NamedTempoaryFile("w", delete_on_close=False) as handle:
+    with tempfile.NamedTemporaryFile("w", delete=False) as handle:
         handle.write(text)
         tmp_mediawiki = handle.name
 
@@ -419,7 +435,7 @@ for mw_filename in names:
     if not stdout:
         sys.stderr.write("No output from pandoc for %r\n" % mw_filename)
     if child.returncode or not stdout:
-        return False
+        sys.exit("ERROR - Calling pandoc failed")
     with open(md_filename, "w") as handle:
         handle.write("---\n")
         handle.write("title: %s\n" % title)
@@ -443,5 +459,6 @@ for mw_filename in names:
                     handle.write(" - %s\n" % category)
         handle.write("---\n\n")
         handle.write(cleanup_markdown(stdout, make_url(title)))
+    os.remove(tmp_mediawiki)
 
 print("Done")
