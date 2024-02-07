@@ -12,7 +12,7 @@ from xml.etree import cElementTree as ElementTree
 
 debug = False
 
-__version__ = "1.2.4"
+__version__ = "1.2.5"
 
 if "-v" in sys.argv or "--version" in sys.argv:
     print("This is mediawiki_to_git_md version " + __version__)
@@ -348,8 +348,8 @@ def make_cannonical(title):
 
 
 def make_url(title):
-    """Spaces to underscore; adds prefix; no trailing slash."""
-    return os.path.join(prefix, title.replace(" ", "_"))
+    """Spaces to underscore; escape colon; adds prefix; no trailing slash."""
+    return os.path.join(prefix, title.replace(" ", "_").replace(":", "%3A"))
 
 
 def make_filename(title, ext):
