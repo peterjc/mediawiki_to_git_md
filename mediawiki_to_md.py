@@ -266,15 +266,15 @@ def cleanup_markdown(text, source_url):
         source = source_url
     if "/" not in source:
         return text
+    base, page = source.rsplit("/", 1)
 
     # Looking for ...](URL "wikilink")... where the URL should look
-    # like a relative link (no http etc), but may not be, e.g.
-    # [DAS/1](DAS/1 "wikilink") --> [DAS/1](/wiki/DAS/1 "wikilink")
+    # like a relative link (no http etc)
     p = re.compile(']\([A-Z].* "wikilink"\)')
     for old in p.findall(text):
-        if old.startswith(("](https:", "](http:", "](ftp:", "](mailto:")):
+        if old.startswith(("](https:", "](http:", "](ftp:", "](mailto:", "])/")):
             continue
-        new = "](/%s%s" % (prefix, old[2:])
+        new = "](%s" % os.path.relpath(old[2:], base)
         # print("Replacing %s --> %s" % (old[1:], new[1:]))
         text = text.replace(old, new)
     return text
