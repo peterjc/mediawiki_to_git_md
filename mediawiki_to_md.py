@@ -218,7 +218,7 @@ def cleanup_mediawiki(text):
             # remove the div and any attempt at styling it (e.g. alignment)
             line = undiv
         # Look for any category tag, usually done as a single line:
-        if "[[Category:" in line:
+        while "[[Category:" in line:
             tag = line[line.index("[[Category:") + 11 :]
             tag = tag[: tag.index("]]")]
             assert ("[[Category:%s]]" % tag) in line, "Infered %r from %s" % (tag, line)
