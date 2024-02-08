@@ -380,6 +380,7 @@ for mw_filename in names:
     text, categories, title = cleanup_mediawiki(original)
 
     if text.strip().startswith("#REDIRECT [[") and text.strip().endswith("]]"):
+        # Internal redirect, will become a redirect_from entry in target page
         redirect = text.strip()[12:-2]
         if "\n" not in redirect and "]" not in redirect:
             # Maybe I should just have written a regular expression?
@@ -390,6 +391,24 @@ for mw_filename in names:
                 redirects_from[redirect].append(title)
             except KeyError:
                 redirects_from[redirect] = [title]
+    elif text.strip().startswith("{{#externalredirect:") and text.strip().endswith(
+        "}}"
+    ):
+        # External redirect
+        redirect = text.strip()[21:-2].strip()
+        redirects[mw_filename] = redirect
+        print(f" * redirection {mw_filename} --> {redirect}")
+        md_filename = mw_filename[: -len(mediawiki_ext)] + markdown_ext
+        if os.path.isfile(md_filename):
+            sys.stderr.write(f"WARNING - will overwrite {md_filename}\n")
+        with open(md_filename, "w") as handle:
+            handle.write("---\n")
+            handle.write("title: %s\n" % title)
+            handle.write("permalink: %s\n" % make_url(title))
+            handle.write(f"redirect_to: {redirect}\n")
+            handle.write("---\n")
+            handle.write("\n")
+            handle.write(f"You should be redirected to <{redirect}>\n")
 
 
 print("Converting pages...")
@@ -446,7 +465,6 @@ for mw_filename in names:
         handle.write("---\n")
         handle.write("title: %s\n" % title)
         handle.write("permalink: %s\n" % make_url(title))
-        # TODO: add redirects here
         if title.startswith("Category:"):
             # This assumes have layout template called tagpage
             # which will insert the tag listing automatically
