@@ -58,6 +58,13 @@ at https://github.com/biopython/biopython.github.io
 This was then labelled v1.0.0 in January 2024, and work
 done to support Python 3 becoming v1.1.0.
 
+The script used for https://github.com/OBF/wiki in converting
+the legacy OBF wiki https://www.open-bio.org/wiki/Main_Page
+in Feb 2024 was labelled as v2.0.0, and the XML dump is
+available here as a test case (127MB; CC-BY 4.0 licensed):
+
+https://www.dropbox.com/s/edp7ukdhg2onls7/obf_mediawiki_dump_2024-02-05.xml.bz2?dl=0
+
 TODO
 ====
 
