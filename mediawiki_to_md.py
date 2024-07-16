@@ -11,7 +11,7 @@ import tempfile
 
 debug = False
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 
 if "-v" in sys.argv or "--version" in sys.argv:
     print("This is mediawiki_to_git_md script mediawiki_to_md version " + __version__)
