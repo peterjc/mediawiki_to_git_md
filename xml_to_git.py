@@ -12,7 +12,7 @@ from xml.etree import cElementTree as ElementTree
 
 debug = False
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 
 if "-v" in sys.argv or "--version" in sys.argv:
     print("This is mediawiki_to_git_md script xml_to_git.py version " + __version__)
