@@ -128,7 +128,7 @@ MediWiki Conversion
 Now run the conversion in your GitHub Pages repository, where git is
 already on the right branch and ready for new commits to be made::
 
-    $ ../mediawiki_to_git_md/mediawiki_to_md.py mediawiki_dump.xml
+    $ ../mediawiki_to_git_md/xml_to_git.py -i mediawiki_dump.xml
     ============================================================
     Parsing XML and saving revisions by page.
     ============================================================
