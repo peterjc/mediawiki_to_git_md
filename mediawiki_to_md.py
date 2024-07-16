@@ -44,7 +44,7 @@ final version into Markdown using Pandoc.
 
 parser = argparse.ArgumentParser(
     prog="mediawiki_to_md.py",
-    description="Turn set of MediaWiki files in Markdown for GitHub Pages",
+    description="Turn set of MediaWiki files into Markdown for GitHub Pages",
     epilog=usage,
     formatter_class=argparse.RawDescriptionHelpFormatter,
 )
