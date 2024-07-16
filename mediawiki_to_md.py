@@ -280,12 +280,6 @@ def cleanup_markdown(text, source_url):
     return text
 
 
-def clean_tag(tag):
-    while "}" in tag:
-        tag = tag[tag.index("}") + 1 :]
-    return tag
-
-
 def make_cannonical(title):
     """Spaces to underscore; first letter upper case only."""
     # Cannot use .title(), e.g. 'Biopython small.jpg' --> 'Biopython Small.Jpg'

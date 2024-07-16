@@ -169,6 +169,13 @@ else:
     sys.stderr.write("WARNING - running without username ignore list\n")
 
 
+
+def clean_tag(tag):
+    while "}" in tag:
+        tag = tag[tag.index("}") + 1 :]
+    return tag
+
+
 def make_cannonical(title):
     """Spaces to underscore; first letter upper case only."""
     # Cannot use .title(), e.g. 'Biopython small.jpg' --> 'Biopython Small.Jpg'
